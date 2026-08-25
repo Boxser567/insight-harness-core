@@ -19,6 +19,9 @@ packages:
   # Deploy root of the single-exe build: a pure dependency manifest whose
   # closure is what the exe bundles and what the Python runtime distributes.
   - python/sdk-runtime
+  # Desktop Runtime deploy root. It is intentionally outside apps/ so the DSH
+  # npm release family never treats this private assembly manifest as publishable.
+  - runtime/*
 
 # Vendored framework packages keep their upstream semver ranges, while local
 # builds must resolve those matching names to this workspace's pinned sources.
@@ -40,6 +43,8 @@ peerDependencyRules:
 allowBuilds:
   esbuild: true
   lefthook: true
+  # Desktop Runtime ships this reviewed Node binary as part of its deployment.
+  node: true
   # Cross-platform boundary for the persistent PTY backend, including ConPTY on Windows.
   node-pty: true
   # Pulled in by @earendil-works/pi-ai (optional LLM API backend). pnpm lists
