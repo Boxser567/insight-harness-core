@@ -44,7 +44,7 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Package Runtime
-        run: pnpm run runtime:package -- --target ${{ matrix.target }}
+        run: pnpm run runtime:package --target ${{ matrix.target }}
       - name: Publish assets
         uses: softprops/action-gh-release@v2
         with:
