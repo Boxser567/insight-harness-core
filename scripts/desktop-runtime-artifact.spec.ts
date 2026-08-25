@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   createDesktopRuntimeMetadata,
   parseDesktopRuntimeTarget,
-  pnpmCommand,
+  pnpmInvocation,
 } from './desktop-runtime-artifact.ts'
 
 describe('desktop runtime artifact metadata', () => {
@@ -32,8 +32,8 @@ describe('desktop runtime artifact metadata', () => {
     })).toThrow('40-character Git SHA')
   })
 
-  it('uses the Windows pnpm command wrapper', () => {
-    expect(pnpmCommand('darwin')).toBe('pnpm')
-    expect(pnpmCommand('win32')).toBe('pnpm.cmd')
+  it('runs the Windows pnpm command through a shell', () => {
+    expect(pnpmInvocation('darwin')).toEqual({ command: 'pnpm', shell: false })
+    expect(pnpmInvocation('win32')).toEqual({ command: 'pnpm.cmd', shell: true })
   })
 })

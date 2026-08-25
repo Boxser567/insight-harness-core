@@ -11,9 +11,12 @@ const PNPM_ENTRY = 'node_modules/pnpm/bin/pnpm.cjs'
 
 export type DesktopRuntimeTarget = 'darwin-arm64' | 'darwin-x64' | 'win32-x64'
 
-/** Return the pnpm executable name for a host platform. */
-export function pnpmCommand(platform: NodeJS.Platform = process.platform): string {
-  return platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
+/** Return the pnpm invocation required by a host platform. */
+export function pnpmInvocation(platform: NodeJS.Platform = process.platform): {
+  command: string
+  shell: boolean
+} {
+  return platform === 'win32' ? { command: 'pnpm.cmd', shell: true } : { command: 'pnpm', shell: false }
 }
 
 export interface DesktopRuntimeMetadata {
@@ -80,12 +83,17 @@ export function assertDesktopRuntimeLayout(directory: string, metadata: DesktopR
   }
 }
 
-function run(command: string, args: string[]): Promise<void> {
+function run(command: string, args: string[], shell = false): Promise<void> {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn(command, args, { cwd: root, stdio: 'inherit', windowsHide: true })
+    const child = spawn(command, args, { cwd: root, shell, stdio: 'inherit', windowsHide: true })
     child.once('error', reject)
     child.once('exit', code => code === 0 ? resolvePromise() : reject(new Error(`${command} exited with code ${code ?? 'unknown'}.`)))
   })
+}
+
+function runPnpm(args: string[]): Promise<void> {
+  const { command, shell } = pnpmInvocation()
+  return run(command, args, shell)
 }
 
 async function packageVersion(path: string, field: 'version' | 'packageManager'): Promise<string> {
@@ -121,9 +129,9 @@ async function main(): Promise<void> {
     throw new Error(`desktop runtime target ${values.target} requires ${target.platform}/${target.arch}; current host is ${process.platform}/${process.arch}.`)
   }
   const output = resolve(root, values.output)
-  if (!values['skip-build']) await run(pnpmCommand(), ['run', 'build:official'])
+  if (!values['skip-build']) await runPnpm(['run', 'build:official'])
   await rm(output, { recursive: true, force: true })
-  await run(pnpmCommand(), [
+  await runPnpm([
     '--filter', DEPLOY_ROOT_PACKAGE, 'deploy', '--legacy', '--prod',
     '--config.node-linker=hoisted', '--config.auto-install-peers=false',
     '--config.link-workspace-packages=true', output,
