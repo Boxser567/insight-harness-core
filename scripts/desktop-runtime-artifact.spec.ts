@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   createDesktopRuntimeMetadata,
   parseDesktopRuntimeTarget,
+  pnpmCommand,
 } from './desktop-runtime-artifact.ts'
 
 describe('desktop runtime artifact metadata', () => {
@@ -29,5 +30,10 @@ describe('desktop runtime artifact metadata', () => {
       repository: 'Boxser567/insight-harness-core', version: '0.1.1-rc.2', commit: 'short',
       nodeVersion: '24.9.0', pnpmVersion: '11.7.0', target: { platform: 'darwin', arch: 'arm64' },
     })).toThrow('40-character Git SHA')
+  })
+
+  it('uses the Windows pnpm command wrapper', () => {
+    expect(pnpmCommand('darwin')).toBe('pnpm')
+    expect(pnpmCommand('win32')).toBe('pnpm.cmd')
   })
 })

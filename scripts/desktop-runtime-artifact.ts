@@ -11,6 +11,11 @@ const PNPM_ENTRY = 'node_modules/pnpm/bin/pnpm.cjs'
 
 export type DesktopRuntimeTarget = 'darwin-arm64' | 'darwin-x64' | 'win32-x64'
 
+/** Return the pnpm executable name for a host platform. */
+export function pnpmCommand(platform: NodeJS.Platform = process.platform): string {
+  return platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
+}
+
 export interface DesktopRuntimeMetadata {
   schemaVersion: 1
   core: { repository: string; version: string; commit: string }
@@ -116,9 +121,9 @@ async function main(): Promise<void> {
     throw new Error(`desktop runtime target ${values.target} requires ${target.platform}/${target.arch}; current host is ${process.platform}/${process.arch}.`)
   }
   const output = resolve(root, values.output)
-  if (!values['skip-build']) await run('pnpm', ['run', 'build:official'])
+  if (!values['skip-build']) await run(pnpmCommand(), ['run', 'build:official'])
   await rm(output, { recursive: true, force: true })
-  await run('pnpm', [
+  await run(pnpmCommand(), [
     '--filter', DEPLOY_ROOT_PACKAGE, 'deploy', '--legacy', '--prod',
     '--config.node-linker=hoisted', '--config.auto-install-peers=false',
     '--config.link-workspace-packages=true', output,
