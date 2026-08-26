@@ -1,9 +1,20 @@
-import { describe, expect, it } from 'vitest'
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, describe, expect, it } from 'vitest'
 import {
+  addDesktopHmrFallback,
   createDesktopRuntimeMetadata,
+  materializeVendoredPackages,
   parseDesktopRuntimeTarget,
   pnpmInvocation,
 } from './desktop-runtime-artifact.ts'
+
+const temporaryDirectories: string[] = []
+
+afterEach(async () => {
+  await Promise.all(temporaryDirectories.splice(0).map(directory => rm(directory, { recursive: true, force: true })))
+})
 
 describe('desktop runtime artifact metadata', () => {
   it('records a fixed Core identity and target', () => {
@@ -35,5 +46,38 @@ describe('desktop runtime artifact metadata', () => {
   it('runs the Windows pnpm command through a shell', () => {
     expect(pnpmInvocation('darwin')).toEqual({ command: 'pnpm', shell: false })
     expect(pnpmInvocation('win32')).toEqual({ command: 'pnpm.cmd', shell: true })
+  })
+
+  it('adds the desktop HMR fallback to the deployed DSH dependency graph', async () => {
+    const output = await mkdtemp(join(tmpdir(), 'desktop-runtime-artifact-'))
+    temporaryDirectories.push(output)
+    const dshDirectory = join(output, 'node_modules', '@deepseek-ai', 'dsh')
+    await mkdir(dshDirectory, { recursive: true })
+    await writeFile(join(dshDirectory, 'package.json'), '{"dependencies":{}}\n')
+
+    await addDesktopHmrFallback(output)
+
+    const dshPackage = JSON.parse(await readFile(join(dshDirectory, 'package.json'), 'utf8')) as {
+      dependencies: Record<string, string>
+    }
+    expect(dshPackage.dependencies['dsh-desktop-hmr-fallback']).toBe('0.1.0')
+    expect(await readFile(join(output, 'node_modules', 'dsh-desktop-hmr-fallback', 'index.js'), 'utf8')).toContain(
+      "export const name = 'dsh-desktop-hmr-fallback'",
+    )
+  })
+
+  it('replaces deployed vendor workspace links with their runtime files', async () => {
+    const output = await mkdtemp(join(tmpdir(), 'desktop-runtime-artifact-'))
+    temporaryDirectories.push(output)
+    const destination = join(output, 'node_modules', '@deepseek-ai', 'schemastery')
+    await mkdir(join(destination, '..'), { recursive: true })
+    await symlink('/missing/vendor/schemastery', destination)
+
+    await materializeVendoredPackages(output)
+
+    expect(JSON.parse(await readFile(join(destination, 'package.json'), 'utf8'))).toMatchObject({
+      name: '@deepseek-ai/schemastery',
+    })
+    expect(await readFile(join(destination, 'lib', 'index.mjs'), 'utf8')).toContain('Schema')
   })
 })
