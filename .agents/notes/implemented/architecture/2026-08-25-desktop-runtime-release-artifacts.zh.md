@@ -22,4 +22,4 @@ Core 升级成为显式流程：创建 Core tag，触发 Runtime 发布工作流
 
 每个目标在对应原生 runner 上组装。不从开发者 Mac 交叉生成多平台归档，因为随包的 Node 可执行文件与原生 Runtime 依赖必须匹配目标平台。
 
-当 pnpm deploy 保留工作区链接时，vendor 包会被复制进 Runtime，因此已安装的桌面应用绝不会从构建机器解析 Core 文件。fallback 仅在宿主缺少 Node 内部加载器时替代配置监听 HMR 服务；具备该加载器的宿主继续使用完整 HMR 实现。
+当 pnpm deploy 保留工作区链接时，vendor 包及其链接的依赖会被复制进 Runtime，因此已安装的桌面应用绝不会从构建机器解析 Core 文件。fallback 仅在宿主缺少 Node 内部加载器时替代配置监听 HMR 服务；具备该加载器的宿主继续使用完整 HMR 实现。

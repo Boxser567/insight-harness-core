@@ -22,4 +22,4 @@ Core version upgrades become an explicit sequence: create a Core tag, dispatch t
 
 Each target is assembled on its own native runner. Cross-platform archive production is not attempted from a developer Mac because the bundled Node executable and native Runtime dependencies must match the target platform.
 
-Vendor packages are copied into the Runtime when pnpm deploy leaves a workspace link, so installed desktop applications never resolve Core files from the build machine. The fallback replaces only the config-watching HMR service when a host lacks Node's internal loader; hosts with the loader retain the full HMR implementation.
+Vendor packages and their linked dependencies are copied into the Runtime when pnpm deploy leaves a workspace link, so installed desktop applications never resolve Core files from the build machine. The fallback replaces only the config-watching HMR service when a host lacks Node's internal loader; hosts with the loader retain the full HMR implementation.

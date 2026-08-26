@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { lstat, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -66,7 +66,7 @@ describe('desktop runtime artifact metadata', () => {
     )
   })
 
-  it('replaces deployed vendor workspace links with their runtime files', async () => {
+  it('replaces deployed vendor workspace links and their nested dependencies with runtime files', async () => {
     const output = await mkdtemp(join(tmpdir(), 'desktop-runtime-artifact-'))
     temporaryDirectories.push(output)
     const destination = join(output, 'node_modules', '@deepseek-ai', 'schemastery')
@@ -79,5 +79,7 @@ describe('desktop runtime artifact metadata', () => {
       name: '@deepseek-ai/schemastery',
     })
     expect(await readFile(join(destination, 'lib', 'index.mjs'), 'utf8')).toContain('Schema')
+    expect((await lstat(join(destination, 'node_modules', '@deepseek-ai', 'cosmokit'))).isSymbolicLink()).toBe(false)
+    expect((await lstat(join(destination, 'node_modules', '@standard-schema', 'spec'))).isSymbolicLink()).toBe(false)
   })
 })
