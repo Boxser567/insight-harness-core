@@ -581,6 +581,26 @@ describe('boot', () => {
     }
   })
 
+  it('resolves a profile plugin from the config directory without Node internal loading', async () => {
+    const dir = tmp()
+    const plugin = join(dir, 'node_modules', 'profile-plugin')
+    mkdirSync(plugin, { recursive: true })
+    writeFileSync(join(plugin, 'package.json'), JSON.stringify({
+      name: 'profile-plugin', type: 'module', exports: './index.mjs',
+    }))
+    writeFileSync(join(plugin, 'index.mjs'), 'export function apply(ctx) { ctx.provide("profilePluginLoaded", true) }\n')
+    writeFileSync(join(dir, 'cordis.yml'), '- id: profile\n  name: profile-plugin\n')
+
+    const ctx = await boot(NAME, join(dir, 'cordis.yml'), undefined, (hostCtx) => {
+      hostCtx.loader.internal = undefined
+    })
+    try {
+      expect(ctx.get('profilePluginLoaded')).toBe(true)
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('keeps non-resolution failures from Node internal loading', async () => {
     const dir = tmp()
     const plugin = join(dir, 'node_modules', 'profile-plugin')

@@ -151,18 +151,26 @@ export abstract class EntryTree {
       // onImport.tracePromise.__proto__
       // internal.import
       info.offset += 3
+      const importFromBaseUrl = async () => {
+        const [{ createRequire }, { pathToFileURL }] = await Promise.all([
+          import(/* @vite-ignore */'node:module'),
+          import(/* @vite-ignore */'node:url'),
+        ])
+        const require = createRequire(new URL('package.json', this.ctx.baseUrl))
+        const resolved = require.resolve(name)
+        return await import(/* @vite-ignore */pathToFileURL(resolved).href)
+      }
       if (this.ctx.loader.internal) {
         try {
           return await this.ctx.loader.internal.import(name, this.ctx.baseUrl!, {})
         } catch (error) {
           if (name.startsWith('.') || this.ctx.baseUrl === undefined || (error as NodeJS.ErrnoException).code !== 'ERR_MODULE_NOT_FOUND') throw error
-          const { createRequire } = await import(/* @vite-ignore */'node:module')
-          const require = createRequire(new URL('package.json', this.ctx.baseUrl))
-          const resolved = require.resolve(name)
-          return await import(/* @vite-ignore */resolved)
+          return await importFromBaseUrl()
         }
       } else if (name.startsWith('.')) {
         return await import(/* @vite-ignore */new URL(name, this.ctx.baseUrl).href)
+      } else if (this.ctx.baseUrl !== undefined) {
+        return await importFromBaseUrl()
       } else {
         return await import(/* @vite-ignore */name)
       }

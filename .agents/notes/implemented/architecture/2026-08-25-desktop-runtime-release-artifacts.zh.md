@@ -23,3 +23,11 @@ Core 升级成为显式流程：创建 Core tag，触发 Runtime 发布工作流
 每个目标在对应原生 runner 上组装。不从开发者 Mac 交叉生成多平台归档，因为随包的 Node 可执行文件与原生 Runtime 依赖必须匹配目标平台。
 
 当 pnpm deploy 保留工作区链接时，vendor 包及其链接的依赖会被复制进 Runtime，因此已安装的桌面应用绝不会从构建机器解析 Core 文件。fallback 仅在宿主缺少 Node 内部加载器时替代配置监听 HMR 服务；具备该加载器的宿主继续使用完整 HMR 实现。
+
+## 曾考虑的替代方案
+
+**Shell 打包时从 registry 安装 `@deepseek-ai/dsh`。** 否决，因为 registry 解析结果可以脱离产品发布而独立变化，而且无法证明选中的包包含完整的桌面 Runtime 依赖图。
+
+**让 Shell 直接运行相邻 Core 源码检出目录。** 否决，因为安装后的桌面应用禁止依赖开发者工作区、工作区提升依赖，也不能要求用户机器存在任一 upstream 仓库。
+
+**从开发者 Mac 构建所有目标平台的 Runtime。** 否决，因为随包的 Node 可执行文件与原生依赖均与目标平台相关。GitHub 原生 runner 能生成可复现的平台制品，无需依赖跨平台模拟。

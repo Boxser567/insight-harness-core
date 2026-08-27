@@ -23,3 +23,11 @@ Core version upgrades become an explicit sequence: create a Core tag, dispatch t
 Each target is assembled on its own native runner. Cross-platform archive production is not attempted from a developer Mac because the bundled Node executable and native Runtime dependencies must match the target platform.
 
 Vendor packages and their linked dependencies are copied into the Runtime when pnpm deploy leaves a workspace link, so installed desktop applications never resolve Core files from the build machine. The fallback replaces only the config-watching HMR service when a host lacks Node's internal loader; hosts with the loader retain the full HMR implementation.
+
+## Alternatives considered
+
+**Install `@deepseek-ai/dsh` from the registry while packaging the Shell.** Rejected because registry resolution can change independently of the product release and cannot prove that the selected package includes the complete desktop Runtime dependency graph.
+
+**Run Core directly from a source checkout beside the Shell.** Rejected because an installed desktop application must not depend on a developer workspace, workspace hoisting, or either upstream repository being present on the user's machine.
+
+**Build every target Runtime from a developer Mac.** Rejected because the bundled Node executable and native dependencies are target-specific. Native GitHub runners provide reproducible platform artifacts without relying on cross-platform emulation.
