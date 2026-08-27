@@ -152,7 +152,15 @@ export abstract class EntryTree {
       // internal.import
       info.offset += 3
       if (this.ctx.loader.internal) {
-        return await this.ctx.loader.internal.import(name, this.ctx.baseUrl!, {})
+        try {
+          return await this.ctx.loader.internal.import(name, this.ctx.baseUrl!, {})
+        } catch (error) {
+          if (name.startsWith('.') || this.ctx.baseUrl === undefined || (error as NodeJS.ErrnoException).code !== 'ERR_MODULE_NOT_FOUND') throw error
+          const { createRequire } = await import(/* @vite-ignore */'node:module')
+          const require = createRequire(new URL('package.json', this.ctx.baseUrl))
+          const resolved = require.resolve(name)
+          return await import(/* @vite-ignore */resolved)
+        }
       } else if (name.startsWith('.')) {
         return await import(/* @vite-ignore */new URL(name, this.ctx.baseUrl).href)
       } else {

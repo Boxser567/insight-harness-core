@@ -559,6 +559,45 @@ describe('boot', () => {
     }
   })
 
+  it('falls back to the config directory when Node internal loading misses a profile plugin', async () => {
+    const dir = tmp()
+    const plugin = join(dir, 'node_modules', 'profile-plugin')
+    mkdirSync(plugin, { recursive: true })
+    writeFileSync(join(plugin, 'package.json'), JSON.stringify({
+      name: 'profile-plugin', type: 'module', exports: './index.mjs',
+    }))
+    writeFileSync(join(plugin, 'index.mjs'), 'export function apply(ctx) { ctx.provide("profilePluginLoaded", true) }\n')
+    writeFileSync(join(dir, 'cordis.yml'), '- id: profile\n  name: profile-plugin\n')
+
+    const ctx = await boot(NAME, join(dir, 'cordis.yml'), undefined, (hostCtx) => {
+      hostCtx.loader.internal = {
+        import: async () => { throw Object.assign(new Error('internal loader cannot resolve profile-plugin'), { code: 'ERR_MODULE_NOT_FOUND' }) },
+      } as never
+    })
+    try {
+      expect(ctx.get('profilePluginLoaded')).toBe(true)
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('keeps non-resolution failures from Node internal loading', async () => {
+    const dir = tmp()
+    const plugin = join(dir, 'node_modules', 'profile-plugin')
+    mkdirSync(plugin, { recursive: true })
+    writeFileSync(join(plugin, 'package.json'), JSON.stringify({
+      name: 'profile-plugin', type: 'module', exports: './index.mjs',
+    }))
+    writeFileSync(join(plugin, 'index.mjs'), 'export function apply() {}\n')
+    writeFileSync(join(dir, 'cordis.yml'), '- id: profile\n  name: profile-plugin\n')
+
+    await expect(boot(NAME, join(dir, 'cordis.yml'), undefined, (hostCtx) => {
+      hostCtx.loader.internal = {
+        import: async () => { throw new Error('internal loader failed to evaluate profile-plugin') },
+      } as never
+    })).rejects.toThrow('internal loader failed to evaluate profile-plugin')
+  })
+
   it('can resolve bare plugins from the harness when the config project shadows their package name', async () => {
     const dir = tmp()
     const harness = tmp()
