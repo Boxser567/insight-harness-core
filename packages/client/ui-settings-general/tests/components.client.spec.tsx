@@ -28,16 +28,25 @@ const unusedHook = (() => { throw new Error('unused by settings-general componen
 const kit = { useSessions: unusedHook, useWorkspaces: unusedHook }
 
 describe('chrome content', () => {
-  it('TriggerContent renders the icon with the label in the wide column', () => {
-    const { container } = render(<TriggerContent {...kit} wide t={t} />)
+  it('TriggerContent renders the button, opens the dialog, and labels the wide column', () => {
+    const openDialog = vi.fn()
+    const { container } = render(
+      <TriggerContent {...kit} wide dialogOpen={false} openDialog={openDialog} t={t} />,
+    )
     expect(container.querySelector('svg')).toBeTruthy()
-    expect(screen.getByText('Settings')).toBeTruthy()
+    const trigger = screen.getByRole('button', { name: 'Settings' })
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(trigger)
+    expect(openDialog).toHaveBeenCalledOnce()
   })
 
   it('TriggerContent drops the label in the rail state', () => {
-    const { container } = render(<TriggerContent {...kit} wide={false} t={t} />)
+    const { container } = render(
+      <TriggerContent {...kit} wide={false} dialogOpen openDialog={vi.fn()} t={t} />,
+    )
     expect(container.querySelector('svg')).toBeTruthy()
     expect(screen.queryByText('Settings')).toBeNull()
+    expect(container.querySelector('button')?.getAttribute('aria-expanded')).toBe('true')
   })
 
   it('HeaderContent and CloseLabel render their translated text', () => {

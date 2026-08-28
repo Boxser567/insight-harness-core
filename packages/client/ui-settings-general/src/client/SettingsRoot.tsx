@@ -1,9 +1,11 @@
 /**
  * Settings shell root: the sidebar-foot trigger row plus the centered modal
  * panel (figma 501:29947, 1080x700) with the section nav rail. The shell is
- * a pure composition face — every piece of text (trigger label, panel title,
- * close label, sections) arrives from registrants through slots; accessible
- * names resolve to that content (trigger: its own text; dialog:
+ * a pure composition face — the complete trigger row and every piece of
+ * panel text (title, close label, sections) arrive from registrants through
+ * slots. A null trigger contribution suppresses only the sidebar row; the
+ * settings shell remains mounted so other plugins can open the dialog.
+ * Accessible names resolve to that content (trigger: its own text; dialog:
  * aria-labelledby the title node; close: visually-hidden slot text). Modal
  * open state and the active section id are component-local viewing state;
  * the onboarding coordinator mounts exactly one ordered registrant while the
@@ -114,6 +116,7 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
     setActiveId(id)
     setOpen(true)
   }, [])
+  const openDialog = useCallback(() => { setOpen(true) }, [])
 
   useEffect(
     () => props.settingsDialog.attach({ open: openSection }),
@@ -146,15 +149,7 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
 
   return (
     <>
-      <button
-        type="button"
-        className={clsx(css.trigger, !wide && css.rail)}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        onClick={() => { setOpen(true) }}
-      >
-        {renderSlot('settings.trigger', { wide })}
-      </button>
+      {renderSlot('settings.trigger', { wide, dialogOpen: open, openDialog })}
       {open && (
         <SettingsPanel
           rows={rows}

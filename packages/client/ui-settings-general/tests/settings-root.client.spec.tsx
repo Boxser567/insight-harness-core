@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { SettingsRootComponentProps } from '../src/client/shell-contract.ts'
 import { SettingsRoot } from '../src/client/SettingsRoot.tsx'
@@ -21,6 +22,7 @@ const SEAT_CONTENT: Record<string, string> = {
 
 function mount({
   wide = true,
+  trigger = 'Settings',
   onboardingActive = true,
   rows = [
     { id: 'general', order: 0, label: 'General' },
@@ -31,13 +33,33 @@ function mount({
     { id: 'welcome', order: -100 },
     { id: 'credential', order: 0 },
   ],
-}: { wide?: boolean; onboardingActive?: boolean; rows?: Row[]; steps?: Step[] } = {}) {
+}: {
+  wide?: boolean
+  trigger?: ReactNode
+  onboardingActive?: boolean
+  rows?: Row[]
+  steps?: Step[]
+} = {}) {
   // Mutable row source standing in for the bound useSections hook; bump()
   // plays a ledger change through the same observable contract.
   let current = rows
   const listeners = new Set<() => void>()
   const renderSlot = vi.fn(
     ((key: string, _owner: unknown, opts?: { only?: string }) => {
+      if (key === 'settings.trigger') {
+        if (trigger === null || trigger === undefined || trigger === false) return trigger
+        const owner = _owner as { dialogOpen: boolean; openDialog: () => void }
+        return (
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={owner.dialogOpen}
+            onClick={owner.openDialog}
+          >
+            {trigger}
+          </button>
+        )
+      }
       if (key === 'settings.section') return <div data-testid={`section-${opts?.only ?? 'all'}`} />
       return SEAT_CONTENT[key]
     }) as SettingsRootComponentProps['renderSlot'],
@@ -87,7 +109,13 @@ describe('SettingsRoot trigger', () => {
     const { renderSlot } = mount()
     const trigger = screen.getByRole('button', { name: 'Settings' })
     expect(trigger.hasAttribute('aria-label')).toBe(false)
-    expect(renderSlot).toHaveBeenCalledWith('settings.trigger', { wide: true })
+    const owner = renderSlot.mock.calls.find(call => call[0] === 'settings.trigger')?.[1] as {
+      wide: boolean
+      dialogOpen: boolean
+      openDialog: () => void
+    }
+    expect(owner).toMatchObject({ wide: true, dialogOpen: false })
+    expect(typeof owner.openDialog).toBe('function')
     expect(trigger.getAttribute('aria-expanded')).toBe('false')
     fireEvent.click(trigger)
     expect(screen.getByRole('dialog')).toBeTruthy()
@@ -96,7 +124,24 @@ describe('SettingsRoot trigger', () => {
 
   it('hands the rail state to the trigger seat', () => {
     const { renderSlot } = mount({ wide: false })
-    expect(renderSlot).toHaveBeenCalledWith('settings.trigger', { wide: false })
+    const owner = renderSlot.mock.calls.find(call => call[0] === 'settings.trigger')?.[1] as {
+      wide: boolean
+      dialogOpen: boolean
+      openDialog: () => void
+    }
+    expect(owner).toMatchObject({ wide: false, dialogOpen: false })
+    expect(typeof owner.openDialog).toBe('function')
+  })
+
+  it('keeps the settings shell mounted when a null trigger hides the sidebar row', () => {
+    const { settingsDialog } = mount({ trigger: null })
+
+    expect(document.querySelector('button[aria-haspopup="dialog"]')).toBeNull()
+
+    act(() => { settingsDialog.open('models') })
+
+    expect(screen.getByRole('dialog', { name: 'Settings Title' })).toBeTruthy()
+    expect(screen.getByTestId('section-models')).toBeTruthy()
   })
 })
 
