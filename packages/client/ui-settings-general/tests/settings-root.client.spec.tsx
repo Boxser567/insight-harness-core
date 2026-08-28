@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { SettingsRootComponentProps } from '../src/client/shell-contract.ts'
 import { SettingsRoot } from '../src/client/SettingsRoot.tsx'
+import { SettingsDialogController } from '../src/client/settings-dialog.ts'
 
 afterEach(cleanup)
 
@@ -49,6 +50,7 @@ function mount({
       byId: { 'active-session': { blank: false } },
     })) as never
   const unusedHook = (() => { throw new Error('unused by SettingsRoot') }) as never
+  const settingsDialog = new SettingsDialogController()
   const props: SettingsRootComponentProps = {
     useSessions,
     useWorkspaces: unusedHook,
@@ -63,6 +65,7 @@ function mount({
       }, [])
       return select(current)
     },
+    settingsDialog,
     renderSlot,
   }
   const view = render(<SettingsRoot {...props} />)
@@ -72,7 +75,7 @@ function mount({
       for (const fn of [...listeners]) fn()
     })
   }
-  return { view, renderSlot, bump, listeners }
+  return { view, renderSlot, bump, listeners, settingsDialog }
 }
 
 function openPanel() {
@@ -162,6 +165,23 @@ describe('SettingsPanel close paths', () => {
 })
 
 describe('SettingsPanel navigation', () => {
+  it('opens a requested section through the settings dialog service', () => {
+    const { renderSlot, settingsDialog } = mount()
+
+    act(() => { settingsDialog.open('models') })
+
+    expect(screen.getByRole('dialog', { name: 'Settings Title' })).toBeTruthy()
+    expect(screen.getByTestId('section-models')).toBeTruthy()
+    expect(renderSlot).toHaveBeenCalledWith('settings.section', expect.any(Object), { only: 'models' })
+  })
+
+  it('disconnects the settings dialog service on unmount', () => {
+    const { view, settingsDialog } = mount()
+    view.unmount()
+
+    expect(() => { settingsDialog.open() }).toThrow('not mounted')
+  })
+
   it('projects rows, marks the first active, and renders only that section', () => {
     mount()
     openPanel()

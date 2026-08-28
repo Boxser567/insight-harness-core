@@ -26,6 +26,7 @@ import { SettingsDocumentAction } from './SettingsDocumentAction.tsx'
 import type { SettingsDocumentActionInjected } from './SettingsDocumentAction.tsx'
 import { SettingsDocumentStore } from './settings-document-store.ts'
 import { en, zh, type SettingsKey } from './locales.ts'
+import { SettingsDialogController } from './settings-dialog.ts'
 
 export type {
   CloseLabelProps, HeaderContentProps, TriggerContentProps,
@@ -36,7 +37,16 @@ export type {
 export type { SettingsDocumentActionInjected, SettingsDocumentActionProps } from './SettingsDocumentAction.tsx'
 export type { SettingsDocumentState } from './settings-document-store.ts'
 export { SettingsDocumentStore } from './settings-document-store.ts'
+export { SettingsDialogController } from './settings-dialog.ts'
+export type { ISettingsDialog } from './settings-dialog.ts'
 export type { SettingsKey } from './locales.ts'
+
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    /** Presentation control for the mounted settings shell. */
+    settingsDialog: import('./settings-dialog.ts').ISettingsDialog
+  }
+}
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -61,6 +71,11 @@ export const inject = ['slots', 'locale', 'connection', 'settingsScope']
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
+  const settingsDialog = new SettingsDialogController()
+  ctx.effect(() => {
+    const disposeService = ctx.reflect.provide('settingsDialog', settingsDialog)
+    return () => { void disposeService() }
+  }, 'ui-settings-general: settings dialog service')
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-settings-general: dictionaries')
 
   // Copy freshness is framework-owned: components read the standard `t`
@@ -91,6 +106,7 @@ export function apply(ctx: ClientContext): void {
   let onboardingVersion = -1
   let onboardingSteps: readonly SettingsOnboardingStep[] = []
   const shellInjected = (): SettingsRootInjected => ({
+    settingsDialog,
     hooks: {
       sections: {
         getSnapshot: () => {

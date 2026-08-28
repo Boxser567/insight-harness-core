@@ -6,6 +6,7 @@ import { apply as settingsApply, inject as settingsInject } from '@deepseek-ai/d
 import { apply, inject } from '../src/client/index.ts'
 import type { SettingsRootInjected } from '../src/client/shell-contract.ts'
 import { SettingsRoot } from '../src/client/SettingsRoot.tsx'
+import { SettingsDialogController } from '../src/client/settings-dialog.ts'
 
 async function bench() {
   const ctx = new Context()
@@ -71,6 +72,22 @@ describe('ui-settings apply', () => {
     expect(after.slots.entries('sidebar.settings')[0]!.component).toBe(SettingsRoot)
     // The self-inflicted ledger notifications hit the duplicate guard.
     expect(after.slots.entries('sidebar.settings')).toHaveLength(1)
+  })
+
+  it('provides a fresh settings dialog service across plugin lifecycles', async () => {
+    const b = await bench()
+    const firstFiber = b.ctx.plugin({ inject: [...inject], apply })
+    await firstFiber.await()
+    const first = b.ctx.get('settingsDialog')
+    expect(first).toBeInstanceOf(SettingsDialogController)
+
+    await firstFiber.dispose()
+    expect(b.ctx.get('settingsDialog')).toBeUndefined()
+
+    const secondFiber = b.ctx.plugin({ inject: [...inject], apply })
+    await secondFiber.await()
+    expect(b.ctx.get('settingsDialog')).toBeInstanceOf(SettingsDialogController)
+    expect(b.ctx.get('settingsDialog')).not.toBe(first)
   })
 
   it('projects the section ledger into ordered nav rows with option defaults', async () => {
