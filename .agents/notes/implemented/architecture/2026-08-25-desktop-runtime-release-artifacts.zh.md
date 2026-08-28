@@ -10,7 +10,7 @@
 
 ## 决策
 
-`runtime/desktop` 是位于 `apps/` 之外的私有 pnpm deploy 根目录，普通 DSH npm 发布族不会发布它。它声明 Runtime 的 Node 与 pnpm 可执行文件、DSH CLI 以及部署后必需的 vendored Cordis 包。`desktop-runtime-artifact.ts` 构建 Core 检出目录，为一个原生目标部署该根目录，将部署后仍为链接的每个 vendor 包实体化，把桌面 HMR fallback 加入已部署 DSH 的依赖图，校验 Node、pnpm 与 DSH 入口，并写入带有 Core 仓库、版本、不可变 Git commit 和目标信息的 `runtime.json`。
+`runtime/desktop` 是位于 `apps/` 之外的私有 pnpm deploy 根目录，普通 DSH npm 发布族不会发布它。它声明 Runtime 的 Node 与 pnpm 可执行文件、DSH CLI、用于编译 Shell 所有集成的 client UI Slots 类型包，以及部署后必需的 vendored Cordis 包。`desktop-runtime-artifact.ts` 构建 Core 检出目录，为一个原生目标部署该根目录，将部署后仍为链接的每个 vendor 包实体化，把桌面 HMR fallback 加入已部署 DSH 的依赖图，校验 Node、pnpm、DSH 与 UI Slots 类型入口，并写入带有 Core 仓库、版本、不可变 Git commit 和目标信息的 `runtime.json`。
 
 `desktop-runtime-release.ts` 将该目录归档为 `insight-harness-runtime-<version>-<target>.tar.gz`，写入 SHA-256 sidecar，并把 Runtime 元数据复制为 Release 资产。手动触发的 `Release desktop Runtime` 工作流从指定的现有 tag 为全部支持目标构建，并将每个目标的三份文件附加到对应 GitHub Release。
 
@@ -23,6 +23,8 @@ Core 升级成为显式流程：创建 Core tag，触发 Runtime 发布工作流
 每个目标在对应原生 runner 上组装。不从开发者 Mac 交叉生成多平台归档，因为随包的 Node 可执行文件与原生 Runtime 依赖必须匹配目标平台。
 
 当 pnpm deploy 保留工作区链接时，vendor 包及其链接的依赖会被复制进 Runtime，因此已安装的桌面应用绝不会从构建机器解析 Core 文件。fallback 仅在宿主缺少 Node 内部加载器时替代配置监听 HMR 服务；具备该加载器的宿主继续使用完整 HMR 实现。
+
+Shell 所有的 client 集成针对所选 Runtime 内的类型进行编译，其中包括 `@deepseek-ai/dsh-client-ui-slots`；它们不会解析相邻 Core 检出目录，也不会把 Core 声明复制到 Shell 仓库。Deploy 根目录只提升这条外部编译路径所需的类型包，而不会提升每个内部 client 包。
 
 ## 曾考虑的替代方案
 

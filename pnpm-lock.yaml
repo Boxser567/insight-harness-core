@@ -9062,6 +9062,9 @@ importers:
       '@deepseek-ai/dsh-bash-local':
         specifier: workspace:^
         version: link:../../packages/shell/bash-local
+      '@deepseek-ai/dsh-client-ui-slots':
+        specifier: workspace:^
+        version: link:../../packages/client/ui-slots
       '@deepseek-ai/dsh-code-runtime':
         specifier: workspace:^
         version: link:../../packages/code-runtime/code-runtime

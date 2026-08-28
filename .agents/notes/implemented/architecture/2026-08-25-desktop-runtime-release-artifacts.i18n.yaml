@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-25-desktop-runtime-release-artifacts.md
-2026-08-25-desktop-runtime-release-artifacts.md: 7ff9202f465eb60b1c51890a99311b7ecd19ce33
-2026-08-25-desktop-runtime-release-artifacts.zh.md: 4f2add5ef8eb7fcf50a8cc7052a18733f2c6c08a
+2026-08-25-desktop-runtime-release-artifacts.md: 7d9096ee28ce20aeb2462f808a2b9580929216da
+2026-08-25-desktop-runtime-release-artifacts.zh.md: f658e04e32eb49f85df10fe9a8c1da72722188aa

@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   addDesktopHmrFallback,
+  assertDesktopRuntimeLayout,
   createDesktopRuntimeMetadata,
   materializeVendoredPackages,
   parseDesktopRuntimeTarget,
@@ -46,6 +47,36 @@ describe('desktop runtime artifact metadata', () => {
   it('runs the Windows pnpm command through a shell', () => {
     expect(pnpmInvocation('darwin')).toEqual({ command: 'pnpm', shell: false })
     expect(pnpmInvocation('win32')).toEqual({ command: 'pnpm.cmd', shell: true })
+  })
+
+  it('requires the client slot type contract in the deployed layout', async () => {
+    const output = await mkdtemp(join(tmpdir(), 'desktop-runtime-artifact-'))
+    temporaryDirectories.push(output)
+    const metadata = createDesktopRuntimeMetadata({
+      repository: 'Boxser567/insight-harness-core',
+      version: '0.1.1-rc.2',
+      commit: 'a'.repeat(40),
+      nodeVersion: '24.9.0',
+      pnpmVersion: '11.7.0',
+      target: { platform: 'darwin', arch: 'arm64' },
+    })
+    for (const path of [
+      join(output, metadata.entry),
+      join(output, 'node_modules', 'pnpm', 'bin', 'pnpm.cjs'),
+      join(output, 'node_modules', 'node', 'bin', 'node'),
+    ]) {
+      await mkdir(join(path, '..'), { recursive: true })
+      await writeFile(path, '')
+    }
+
+    expect(() => { assertDesktopRuntimeLayout(output, metadata) }).toThrow('dsh-client-ui-slots/package.json')
+    const slots = join(output, 'node_modules', '@deepseek-ai', 'dsh-client-ui-slots')
+    await mkdir(slots, { recursive: true })
+    await writeFile(join(slots, 'package.json'), '{}\n')
+    expect(() => { assertDesktopRuntimeLayout(output, metadata) }).toThrow('dsh-client-ui-slots/lib/types/index.d.ts')
+    await mkdir(join(slots, 'lib', 'types'), { recursive: true })
+    await writeFile(join(slots, 'lib', 'types', 'index.d.ts'), '')
+    expect(() => { assertDesktopRuntimeLayout(output, metadata) }).not.toThrow()
   })
 
   it('adds the desktop HMR fallback to the deployed DSH dependency graph', async () => {

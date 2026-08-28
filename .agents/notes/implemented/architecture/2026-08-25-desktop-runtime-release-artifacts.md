@@ -10,7 +10,7 @@ The desktop Shell must run a Core version selected by the product owner, rather 
 
 ## Decision
 
-`runtime/desktop` is a private pnpm deploy root outside `apps/`, so the normal DSH npm release family cannot publish it. It declares the Runtime's Node and pnpm executables, the DSH CLI, and the vendored Cordis packages required after deployment. `desktop-runtime-artifact.ts` builds the Core checkout, deploys that root for one native target, materializes every deployed vendor-package link, adds the desktop HMR fallback to the deployed DSH dependency graph, verifies the Node, pnpm, and DSH entries, and writes `runtime.json` with the Core repository, version, immutable Git commit, and target.
+`runtime/desktop` is a private pnpm deploy root outside `apps/`, so the normal DSH npm release family cannot publish it. It declares the Runtime's Node and pnpm executables, the DSH CLI, the client UI Slots type package used to compile Shell-owned integrations, and the vendored Cordis packages required after deployment. `desktop-runtime-artifact.ts` builds the Core checkout, deploys that root for one native target, materializes every deployed vendor-package link, adds the desktop HMR fallback to the deployed DSH dependency graph, verifies the Node, pnpm, DSH, and UI Slots type entries, and writes `runtime.json` with the Core repository, version, immutable Git commit, and target.
 
 `desktop-runtime-release.ts` archives that directory as `insight-harness-runtime-<version>-<target>.tar.gz`, writes a SHA-256 sidecar, and copies the Runtime metadata as a release asset. The manual `Release desktop Runtime` workflow builds all supported targets from the requested existing tag and attaches the three files for each target to that GitHub Release.
 
@@ -23,6 +23,8 @@ Core version upgrades become an explicit sequence: create a Core tag, dispatch t
 Each target is assembled on its own native runner. Cross-platform archive production is not attempted from a developer Mac because the bundled Node executable and native Runtime dependencies must match the target platform.
 
 Vendor packages and their linked dependencies are copied into the Runtime when pnpm deploy leaves a workspace link, so installed desktop applications never resolve Core files from the build machine. The fallback replaces only the config-watching HMR service when a host lacks Node's internal loader; hosts with the loader retain the full HMR implementation.
+
+Shell-owned client integrations compile against types inside the selected Runtime, including `@deepseek-ai/dsh-client-ui-slots`; they do not resolve a sibling Core checkout or copy Core declarations into the Shell repository. The deploy root promotes only the type packages required by that external compilation path rather than every internal client package.
 
 ## Alternatives considered
 

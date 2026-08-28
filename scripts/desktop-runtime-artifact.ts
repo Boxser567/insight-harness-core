@@ -79,7 +79,13 @@ export function assertDesktopRuntimeLayout(directory: string, metadata: DesktopR
     'bin',
     metadata.target.platform === 'win32' ? 'node.exe' : 'node',
   )
-  for (const path of [join(directory, metadata.entry), join(directory, PNPM_ENTRY), nodeExecutable]) {
+  for (const path of [
+    join(directory, metadata.entry),
+    join(directory, PNPM_ENTRY),
+    nodeExecutable,
+    join(directory, 'node_modules', '@deepseek-ai', 'dsh-client-ui-slots', 'package.json'),
+    join(directory, 'node_modules', '@deepseek-ai', 'dsh-client-ui-slots', 'lib', 'types', 'index.d.ts'),
+  ]) {
     if (!existsSync(path)) throw new Error(`desktop runtime is missing ${path}.`)
   }
 }
