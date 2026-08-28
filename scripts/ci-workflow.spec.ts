@@ -459,11 +459,11 @@ describe('Issue lifecycle workflow', () => {
 })
 
 describe('npm release workflows', () => {
-  it('keeps publication dispatch-only and pack in the PR workflow', () => {
-    // pack stays in the PR/master release workflows so a PR proves the set packs.
+  it('keeps pack and publication dispatch-only', () => {
     for (const file of ['release.yml', 'release-vendor.yml']) {
       const workflow = loadWorkflow(`.github/workflows/${file}`)
-      if (!isRecord(workflow.jobs)) throw new TypeError(`${file} must define jobs`)
+      if (!isRecord(workflow.on) || !isRecord(workflow.jobs)) throw new TypeError(`${file} must define on and jobs`)
+      expect(Object.keys(workflow.on)).toEqual(['workflow_dispatch'])
       expect(Object.keys(workflow.jobs).sort()).toEqual(['pack'])
     }
 
@@ -478,6 +478,62 @@ describe('npm release workflows', () => {
       expect(publish.environment).toBe('npm-publish')
       expect(publish.concurrency).toMatchObject({ group: 'Release-publish' })
     }
+  })
+})
+
+describe('desktop fork workflows', () => {
+  it('runs only the desktop macOS Runtime and Seatbelt checks automatically', () => {
+    const workflow = loadWorkflow('.github/workflows/sandbox.yml')
+    const macos = workflowJob(workflow, 'macos-desktop')
+    const linux = workflowJob(workflow, 'linux-sandbox-e2e')
+    if (!isRecord(workflow.on) || !Array.isArray(macos.steps) || !isRecord(linux.strategy)) {
+      throw new TypeError('Sandbox workflow must define events, macOS steps, and a Linux strategy')
+    }
+    const matrix = linux.strategy.matrix
+    if (!isRecord(matrix) || !Array.isArray(matrix.include)) {
+      throw new TypeError('Linux Sandbox job must define an explicit matrix')
+    }
+
+    expect(Object.keys(workflow.on).sort()).toEqual(['push', 'workflow_dispatch'])
+    expect(workflowEvent(workflow, 'push')).toMatchObject({ branches: ['master'] })
+    expect(macos['runs-on']).toBe('macos-latest')
+    const macosCommands = macos.steps
+      .filter(isRecord)
+      .map(step => step.run)
+      .filter((run): run is string => typeof run === 'string')
+      .join('\n')
+    expect(macosCommands).toContain('scripts/desktop-runtime-artifact.spec.ts')
+    expect(macosCommands).toContain('packages/sandbox/sandbox-local/tests/seatbelt.e2e.ts')
+    expect(macosCommands).toContain('packages/shell/bash-sandbox/tests/seatbelt.e2e.ts')
+    expect(macosCommands).not.toContain('pnpm run test')
+
+    expect(linux.if).toBe("github.event_name == 'workflow_dispatch'")
+    expect(matrix.include).toEqual([
+      { os: 'ubuntu-latest', runner: 'bwrap' },
+      { os: 'ubuntu-24.04', runner: 'landlock' },
+      { os: 'ubuntu-24.04-arm', runner: 'landlock' },
+    ])
+  })
+
+  it('keeps Linux package validation manual and desktop Runtime targets macOS/Windows-only', () => {
+    const landlock = loadWorkflow('.github/workflows/landlock-run.yml')
+    const runtime = loadWorkflow('.github/workflows/runtime-release.yml')
+    const packageJob = workflowJob(runtime, 'package')
+    if (!isRecord(landlock.on) || !isRecord(runtime.on) || !isRecord(packageJob.strategy)) {
+      throw new TypeError('Landlock and Runtime release workflows must define events and package strategy')
+    }
+    const matrix = packageJob.strategy.matrix
+    if (!isRecord(matrix) || !Array.isArray(matrix.include)) {
+      throw new TypeError('Runtime release package job must define an explicit matrix')
+    }
+
+    expect(Object.keys(landlock.on)).toEqual(['workflow_dispatch'])
+    expect(Object.keys(runtime.on)).toEqual(['workflow_dispatch'])
+    expect(matrix.include.map(entry => isRecord(entry) ? entry.target : undefined)).toEqual([
+      'darwin-arm64',
+      'darwin-x64',
+      'win32-x64',
+    ])
   })
 })
 

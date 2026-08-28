@@ -33,7 +33,10 @@ function run(command: string, args: string[]): Promise<void> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, { cwd: root, stdio: 'inherit', windowsHide: true })
     child.once('error', reject)
-    child.once('exit', code => code === 0 ? resolvePromise() : reject(new Error(`${command} exited with code ${code ?? 'unknown'}.`)))
+    child.once('exit', (code) => {
+      if (code === 0) resolvePromise()
+      else reject(new Error(`${command} exited with code ${code ?? 'unknown'}.`))
+    })
   })
 }
 

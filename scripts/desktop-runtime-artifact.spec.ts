@@ -109,7 +109,7 @@ describe('desktop runtime artifact metadata', () => {
     expect(JSON.parse(await readFile(join(destination, 'package.json'), 'utf8'))).toMatchObject({
       name: '@deepseek-ai/schemastery',
     })
-    expect(await readFile(join(destination, 'lib', 'index.mjs'), 'utf8')).toContain('Schema')
+    expect(await readFile(join(destination, 'src', 'index.ts'), 'utf8')).toContain('Schema')
     expect((await lstat(join(destination, 'node_modules', '@deepseek-ai', 'cosmokit'))).isSymbolicLink()).toBe(false)
     expect((await lstat(join(destination, 'node_modules', '@standard-schema', 'spec'))).isSymbolicLink()).toBe(false)
   })

@@ -94,7 +94,10 @@ function run(command: string, args: string[], shell = false): Promise<void> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, { cwd: root, shell, stdio: 'inherit', windowsHide: true })
     child.once('error', reject)
-    child.once('exit', code => code === 0 ? resolvePromise() : reject(new Error(`${command} exited with code ${code ?? 'unknown'}.`)))
+    child.once('exit', (code) => {
+      if (code === 0) resolvePromise()
+      else reject(new Error(`${command} exited with code ${code ?? 'unknown'}.`))
+    })
   })
 }
 
@@ -148,7 +151,10 @@ async function gitCommit(): Promise<string> {
     const child = spawn('git', ['rev-parse', 'HEAD'], { cwd: root, stdio: ['ignore', 'pipe', 'inherit'] })
     child.stdout.on('data', (chunk) => { stdout += String(chunk) })
     child.once('error', reject)
-    child.once('exit', code => code === 0 ? resolvePromise({ stdout }) : reject(new Error('git rev-parse HEAD failed.')))
+    child.once('exit', (code) => {
+      if (code === 0) resolvePromise({ stdout })
+      else reject(new Error('git rev-parse HEAD failed.'))
+    })
   })
   return stdout.trim()
 }

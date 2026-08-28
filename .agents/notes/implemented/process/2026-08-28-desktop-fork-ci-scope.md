@@ -1,6 +1,6 @@
 # Agent Note: Desktop fork CI scope
 
-Status: proposed
+Status: implemented
 
 English | [中文](2026-08-28-desktop-fork-ci-scope.zh.md)
 
@@ -8,7 +8,7 @@ English | [中文](2026-08-28-desktop-fork-ci-scope.zh.md)
 
 The Insight desktop fork ships macOS and Windows products, while the inherited Core workflows automatically spend hosted capacity on Linux sandbox matrices and npm package rehearsals after every `master` push. The macOS Sandbox workflow also runs the entire unit suite before its Seatbelt proof, so unrelated PowerShell timing failures can prevent the platform sandbox check from starting. A Runtime artifact test reads ignored vendor build output and therefore passes only in a previously built checkout.
 
-## Proposal
+## Decision
 
 `sandbox.yml` keeps an automatic macOS job limited to the clean-checkout desktop Runtime artifact test and the two real Seatbelt E2E files. Its bwrap and Landlock jobs remain available through `workflow_dispatch` only. The existing Windows master workflow continues to own native PowerShell coverage, and `runtime-release.yml` remains the release path for `darwin-arm64`, `darwin-x64`, and `win32-x64` artifacts.
 
@@ -24,10 +24,10 @@ The Runtime materialization unit test verifies tracked vendor source files rathe
 
 **Delete Linux and npm workflows.** Deletion makes later upstream synchronization harder and removes useful manual diagnostics. Retaining their jobs behind explicit dispatch preserves those capabilities without automatic cost.
 
-## Acceptance criteria
+## Testing
 
-A clean checkout passes `desktop-runtime-artifact.spec.ts` without a prior build. A `master` push automatically starts the focused macOS Sandbox path and the existing Windows path, while Linux Sandbox, Landlock package validation, and npm pack rehearsals require manual dispatch. Desktop Runtime release targets remain limited to two macOS architectures and Windows x64.
+A clean-checkout regression test proves that `desktop-runtime-artifact.spec.ts` does not require ignored vendor build output. Workflow structure tests pin the automatic macOS commands, manual-only Linux and npm triggers, and the Runtime release target inventory. The two Seatbelt E2E files run under a real host `sandbox-exec` and reject a self-skipped platform proof.
 
-## Risks
+## Consequences
 
-Linux and npm regressions can remain undiscovered until a maintainer runs the manual workflows or prepares an upstream synchronization. The automatic macOS job no longer supplies whole-repository Darwin parity; it proves only the supported desktop artifact and Seatbelt paths, while broader macOS checks become an explicit maintenance action.
+Product pushes spend hosted capacity on the supported macOS sandbox path and the existing Windows path instead of Linux and npm release rehearsals. Linux and npm regressions can remain undiscovered until a maintainer runs the manual workflows or prepares an upstream synchronization. The automatic macOS job does not supply whole-repository Darwin parity; it proves the supported desktop artifact and Seatbelt paths, while broader macOS checks are an explicit maintenance action.
