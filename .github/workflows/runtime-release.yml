@@ -12,6 +12,11 @@ on:
         required: true
         default: true
         type: boolean
+      publish:
+        description: Publish Release assets (false only builds and uploads workflow artifacts; tag may then be a branch)
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -36,6 +41,12 @@ jobs:
           ref: ${{ inputs.tag }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Require an existing tag for publication
+        if: inputs.publish
+        shell: bash
+        env:
+          RUNTIME_TAG: ${{ inputs.tag }}
+        run: git show-ref --verify "refs/tags/$RUNTIME_TAG"
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v6
         with:
@@ -45,7 +56,14 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Package Runtime
         run: pnpm run runtime:package --target ${{ matrix.target }}
+      - name: Collect validation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-${{ matrix.target }}
+          path: dist/runtime-release/*.tar.gz*
+          if-no-files-found: error
       - name: Publish assets
+        if: inputs.publish
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag }}

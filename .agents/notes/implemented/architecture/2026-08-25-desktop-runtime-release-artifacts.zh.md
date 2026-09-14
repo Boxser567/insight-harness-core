@@ -20,6 +20,8 @@
 
 pnpm 11 的 legacy hoisted 部署可能将包放在源码的 `runtime/desktop/node_modules`，而非重定向后的输出目录。组装仅将部署记录中的这些包复制到缺失的输出位置，排除相对于源码的 `node_modules` 链接；依赖从部署后的提升目录解析。部署清单补丁采用原子替换，避免 pnpm 硬链接修改源码清单。
 
+工作流也支持 `publish=false` 的验证模式：检出指定分支或 tag，在各原生目标构建并上传工作流制品，不创建 Release。发布模式要求 tag 已存在。两种模式均保留各目标的归档、校验和与元数据。
+
 ## 后果
 
 Core 升级成为显式流程：创建 Core tag，触发 Runtime 发布工作流，在 Shell 锁文件中记录生成的目标资产 URL 与 SHA-256，然后构建桌面安装包。重新构建 Shell 安装包永远不会解析更新的 Core 包。锁定资产损坏或不可用时，打包会失败，而不会静默更改随产品交付的 agent Runtime。

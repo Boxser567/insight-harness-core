@@ -20,6 +20,8 @@ The desktop deploy root explicitly includes required workspace peer dependencies
 
 pnpm 11 legacy hoisted deployment can place packages under the source `runtime/desktop/node_modules` instead of its redirected output. Assembly copies only those recorded package placements into missing output locations, omitting their source-relative `node_modules` links; dependencies resolve from the deployed hoisted tree. Deployment manifest patches use atomic replacement so pnpm hard links cannot modify source manifests.
 
+The workflow also supports validation with `publish=false`: it checks out the supplied branch or tag, builds each native target, and uploads workflow artifacts without creating a Release. Publication requires an existing tag. Both modes retain the archive, checksum, and metadata for each target.
+
 ## Consequences
 
 Core version upgrades become an explicit sequence: create a Core tag, dispatch the Runtime release workflow, record the generated target asset URL and SHA-256 in the Shell lock, then build the desktop installer. Rebuilding a Shell installer never resolves a newer Core package. A broken or unavailable locked asset fails packaging rather than silently changing the shipped agent Runtime.

@@ -22,8 +22,6 @@ const PATTERNS = [
   'docs/**/*.md',
   'packages/*/*.md',
   'packages/*/*/*.md',
-  'snapshots/**/system-prompt.expected.md',
-  'packages/**/system-prompt.expected.md',
   'AGENTS.md',
   'packages/AGENTS.md',
   'snapshots/AGENTS.md',
@@ -70,7 +68,12 @@ function findViolations(absPath: string): Violation[] {
   return out
 }
 
-const files = uniqueRepoFiles(root, PATTERNS, isArchivedAgentNotePath)
+// Node glob treats symlinked files as directories when a recursive pattern ends
+// in a literal filename. Match Markdown first, then select the expected basename.
+const expected = uniqueRepoFiles(root, ['snapshots/**/*.md', 'packages/**/*.md'],
+  path => !path.endsWith('/system-prompt.expected.md'))
+const files = [...new Map([...uniqueRepoFiles(root, PATTERNS, isArchivedAgentNotePath), ...expected]
+  .map(file => [file.real, file])).values()]
 const all = files.flatMap(file => findViolations(file.abs))
 const checked = files.length
 
