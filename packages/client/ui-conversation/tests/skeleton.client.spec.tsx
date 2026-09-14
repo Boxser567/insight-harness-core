@@ -283,7 +283,7 @@ function mount(
         />
       )
     }
-    return <div data-testid={`view-${opts?.only ?? key}`} />
+    return opts?.fallback ?? <div data-testid={`view-${opts?.only ?? key}`} />
   }) as ConversationRootProps['renderSlot']
   const renderSlotChain = ((_key, _owner, opts) => (
     options.overlayTakeover === true
@@ -326,11 +326,11 @@ function mount(
 
 describe('Hero chrome', () => {
   it('renders the English preview badge through the hero locale seat', () => {
-    const renderSlot = vi.fn<HeroShellProps['renderSlot']>(() => null)
+    const renderSlot = vi.fn<HeroShellProps['renderSlot']>((_key, _owner, options) => options?.fallback ?? null)
     const view = render(<HeroShell t={makeTranslate(en, commonEn)} renderSlot={renderSlot} />)
     expect(view.getByText('Into the Unknown')).toBeTruthy()
     expect(view.getByText('Preview')).toBeTruthy()
-    expect(renderSlot).toHaveBeenCalledOnce()
+    expect(renderSlot).toHaveBeenCalledTimes(2)
     expect(renderSlot.mock.calls[0]?.[0]).toBe('conversation.hero.brand.mark')
     const brandMarkOwner = renderSlot.mock.calls[0]?.[1]
     if (brandMarkOwner === undefined || !('size' in brandMarkOwner) || !('className' in brandMarkOwner)) {
@@ -460,6 +460,17 @@ describe('ConversationRoot resident composer', () => {
     const fallback = b.view.container.querySelector('[data-chain-overlay-fallback="conversation.composer"]')
     expect(seat?.contains(takeover)).toBe(true)
     expect(seat?.contains(fallback)).toBe(true)
+  })
+
+  it('allows a product title to replace both the headline and preview badge', () => {
+    const renderSlot: HeroShellProps['renderSlot'] = (key, _owner, options) =>
+      key === 'conversation.hero.brand.title'
+        ? <span>以专业为引擎，让团队与AI共成长</span>
+        : options?.fallback ?? null
+    const view = render(<HeroShell t={makeTranslate(zh, commonZh)} renderSlot={renderSlot} />)
+    expect(view.getByText('以专业为引擎，让团队与AI共成长')).toBeTruthy()
+    expect(view.queryByText('探索未至之境')).toBeNull()
+    expect(view.queryByText('预览版')).toBeNull()
   })
 
   it('hero phase: same textarea, hero chrome, no header, picker switches the workspace', () => {
