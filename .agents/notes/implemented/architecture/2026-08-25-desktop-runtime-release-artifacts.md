@@ -16,6 +16,8 @@ The desktop Shell must run a Core version selected by the product owner, rather 
 
 The desktop Shell consumes the archive only after it matches a checked-in lock entry. It verifies the archive SHA-256 before extraction and verifies the extracted `runtime.json` before running DSH. It has no registry fallback.
 
+The desktop deploy root explicitly includes required workspace peer dependencies. Runtime assembly resolves each required `@deepseek-ai/*` peer from its deployed consumer and refuses missing peers before writing release metadata; optional peers remain optional. This check catches import-time failures that workspace builds hide through development dependencies.
+
 ## Consequences
 
 Core version upgrades become an explicit sequence: create a Core tag, dispatch the Runtime release workflow, record the generated target asset URL and SHA-256 in the Shell lock, then build the desktop installer. Rebuilding a Shell installer never resolves a newer Core package. A broken or unavailable locked asset fails packaging rather than silently changing the shipped agent Runtime.

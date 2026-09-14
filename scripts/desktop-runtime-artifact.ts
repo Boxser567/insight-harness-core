@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
+import { createRequire } from 'node:module'
 import { existsSync } from 'node:fs'
-import { cp, lstat, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { cp, lstat, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 
@@ -90,6 +91,31 @@ export function assertDesktopRuntimeLayout(directory: string, metadata: DesktopR
   }
 }
 
+/**
+ * Verify required workspace peers from the deployed package locations.
+ * @param directory - Hoisted production Runtime root.
+ * @returns Resolution after every required peer can be resolved.
+ * @throws When a deployed package has a missing required workspace peer.
+ */
+export async function assertDesktopRuntimePeers(directory: string): Promise<void> {
+  const scope = join(directory, 'node_modules', '@deepseek-ai')
+  for (const name of await readdir(scope)) {
+    const manifestPath = join(scope, name, 'package.json')
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
+      name: string
+      peerDependencies?: Record<string, string>
+      peerDependenciesMeta?: Record<string, { optional?: boolean }>
+    }
+    const require = createRequire(manifestPath)
+    for (const peer of Object.keys(manifest.peerDependencies ?? {})) {
+      if (!peer.startsWith('@deepseek-ai/') || manifest.peerDependenciesMeta?.[peer]?.optional) continue
+      try { require.resolve(`${peer}/package.json`) } catch (cause) {
+        throw new Error(`desktop runtime: ${manifest.name} requires missing peer ${peer}`, { cause })
+      }
+    }
+  }
+}
+
 function run(command: string, args: string[], shell = false): Promise<void> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, { cwd: root, shell, stdio: 'inherit', windowsHide: true })
@@ -123,7 +149,9 @@ export async function addDesktopHmrFallback(output: string): Promise<void> {
     dependencies?: Record<string, string>
   }
   dshPackage.dependencies = { ...dshPackage.dependencies, [DESKTOP_HMR_FALLBACK]: '0.1.0' }
-  await writeFile(dshPackagePath, `${JSON.stringify(dshPackage, null, 2)}\n`, 'utf8')
+  const stagingPath = `${dshPackagePath}.desktop-tmp`
+  await writeFile(stagingPath, `${JSON.stringify(dshPackage, null, 2)}\n`, 'utf8')
+  await rename(stagingPath, dshPackagePath)
 }
 
 export async function materializeVendoredPackages(output: string): Promise<void> {
@@ -195,6 +223,7 @@ async function main(): Promise<void> {
     pnpmVersion: packageManager.replace(/^pnpm@/, ''),
     target,
   })
+  await assertDesktopRuntimePeers(output)
   assertDesktopRuntimeLayout(output, metadata)
   await writeDesktopRuntimeMetadata(join(output, 'runtime.json'), metadata)
   console.log(`desktop runtime assembled: ${output}`)

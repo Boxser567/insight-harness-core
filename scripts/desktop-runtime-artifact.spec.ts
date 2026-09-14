@@ -1,10 +1,11 @@
-import { lstat, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { link, lstat, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   addDesktopHmrFallback,
   assertDesktopRuntimeLayout,
+  assertDesktopRuntimePeers,
   createDesktopRuntimeMetadata,
   materializeVendoredPackages,
   parseDesktopRuntimeTarget,
@@ -113,4 +114,38 @@ describe('desktop runtime artifact metadata', () => {
     expect((await lstat(join(destination, 'node_modules', '@deepseek-ai', 'cosmokit'))).isSymbolicLink()).toBe(false)
     expect((await lstat(join(destination, 'node_modules', '@standard-schema', 'spec'))).isSymbolicLink()).toBe(false)
   })
+})
+
+
+it('rejects a deploy missing required peers while permitting absent optional peers', async () => {
+  const output = await mkdtemp(join(tmpdir(), 'desktop-runtime-peers-'))
+  temporaryDirectories.push(output)
+  const packagePath = join(output, 'node_modules/@deepseek-ai/dsh-fixture')
+  const requiredPath = join(output, 'node_modules/@deepseek-ai/dsh-required')
+  await mkdir(packagePath, { recursive: true })
+  await writeFile(join(packagePath, 'package.json'), JSON.stringify({
+    name: '@deepseek-ai/dsh-fixture',
+    peerDependencies: { '@deepseek-ai/dsh-required': '*', '@deepseek-ai/dsh-optional': '*' },
+    peerDependenciesMeta: { '@deepseek-ai/dsh-optional': { optional: true } },
+  }))
+  await expect(assertDesktopRuntimePeers(output)).rejects.toThrow('requires missing peer @deepseek-ai/dsh-required')
+  await mkdir(requiredPath, { recursive: true })
+  await writeFile(join(requiredPath, 'package.json'), JSON.stringify({ name: '@deepseek-ai/dsh-required' }))
+  await expect(assertDesktopRuntimePeers(output)).resolves.toBeUndefined()
+})
+
+
+it('keeps workspace manifests unchanged when deploy uses hard links', async () => {
+  const output = await mkdtemp(join(tmpdir(), 'desktop-runtime-hardlink-'))
+  temporaryDirectories.push(output)
+  const source = join(output, 'source-package.json')
+  const manifest = JSON.stringify({ name: '@deepseek-ai/dsh', dependencies: {} })
+  await writeFile(source, manifest)
+  const deployed = join(output, 'node_modules/@deepseek-ai/dsh')
+  await mkdir(deployed, { recursive: true })
+  await link(source, join(deployed, 'package.json'))
+  await addDesktopHmrFallback(output)
+  expect(await readFile(source, 'utf8')).toBe(manifest)
+  const patched = JSON.parse(await readFile(join(deployed, 'package.json'), 'utf8')) as { dependencies: Record<string, string> }
+  expect(patched.dependencies['dsh-desktop-hmr-fallback']).toBe('0.1.0')
 })
