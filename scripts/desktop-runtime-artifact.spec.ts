@@ -8,6 +8,7 @@ import {
   assertDesktopRuntimePeers,
   createDesktopRuntimeMetadata,
   materializeVendoredPackages,
+  materializeDeployedProjectPackages,
   parseDesktopRuntimeTarget,
   pnpmInvocation,
 } from './desktop-runtime-artifact.ts'
@@ -148,4 +149,27 @@ it('keeps workspace manifests unchanged when deploy uses hard links', async () =
   expect(await readFile(source, 'utf8')).toBe(manifest)
   const patched = JSON.parse(await readFile(join(deployed, 'package.json'), 'utf8')) as { dependencies: Record<string, string> }
   expect(patched.dependencies['dsh-desktop-hmr-fallback']).toBe('0.1.0')
+})
+
+
+it('materializes only recorded deploy packages misplaced under the selected importer', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'desktop-runtime-placement-'))
+  temporaryDirectories.push(workspace)
+  const output = join(workspace, 'out')
+  const misplaced = join(workspace, 'runtime/desktop/node_modules/@deepseek-ai/dsh')
+  await mkdir(misplaced, { recursive: true })
+  await writeFile(join(misplaced, 'package.json'), '{"name":"@deepseek-ai/dsh"}')
+  await mkdir(join(misplaced, 'node_modules'), { recursive: true })
+  await symlink('/missing/workspace/dependency', join(misplaced, 'node_modules', 'broken-source-link'))
+  await mkdir(join(output, 'node_modules'), { recursive: true })
+  await writeFile(join(output, 'node_modules/.modules.yaml'), JSON.stringify({ hoistedLocations: {
+    dsh: ['runtime/desktop/node_modules/@deepseek-ai/dsh'],
+    outside: ['../unrelated'],
+  } }))
+  await materializeDeployedProjectPackages(output, workspace)
+  expect(await readFile(join(output, 'node_modules/@deepseek-ai/dsh/package.json'), 'utf8')).toBe('{"name":"@deepseek-ai/dsh"}')
+  await expect(lstat(join(output, 'node_modules/@deepseek-ai/dsh/node_modules'))).rejects.toMatchObject({ code: 'ENOENT' })
+  await writeFile(join(output, 'node_modules/@deepseek-ai/dsh/package.json'), 'existing')
+  await materializeDeployedProjectPackages(output, workspace)
+  expect(await readFile(join(output, 'node_modules/@deepseek-ai/dsh/package.json'), 'utf8')).toBe('existing')
 })

@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { existsSync } from 'node:fs'
 import { cp, lstat, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 
 const root = resolve(import.meta.dirname, '..')
@@ -154,6 +154,39 @@ export async function addDesktopHmrFallback(output: string): Promise<void> {
   await rename(stagingPath, dshPackagePath)
 }
 
+/**
+ * Copy the selected importer's package placements into the portable Runtime.
+ * pnpm 11 legacy hoisting records some peer contexts under the source importer
+ * instead of honoring its redirected modulesDir. Only recorded deploy outputs
+ * under runtime/desktop/node_modules may supply a missing target package.
+ * @param output - Completed legacy deploy directory.
+ * @param workspaceRoot - Source workspace containing the selected importer.
+ * @returns Resolution after misplaced packages are copied to the deploy root.
+ */
+export async function materializeDeployedProjectPackages(output: string, workspaceRoot = root): Promise<void> {
+  const metadata = JSON.parse(await readFile(join(output, 'node_modules', '.modules.yaml'), 'utf8')) as {
+    hoistedLocations?: Record<string, string[]>
+  }
+  const importerModules = join(workspaceRoot, 'runtime', 'desktop', 'node_modules')
+  for (const locations of Object.values(metadata.hoistedLocations ?? {})) {
+    for (const location of locations) {
+      const source = resolve(workspaceRoot, location)
+      const suffix = relative(importerModules, source)
+      if (!suffix || isAbsolute(suffix) || suffix === '..' || suffix.startsWith('../') || suffix.startsWith('..\\')) continue
+      const destination = join(output, 'node_modules', suffix)
+      if (existsSync(destination)) continue
+      await mkdir(dirname(destination), { recursive: true })
+      await cp(source, destination, {
+        recursive: true,
+        dereference: true,
+        // Source workspace links are relative to their original package location.
+        // Runtime dependencies resolve through the deployed hoisted modules instead.
+        filter: path => path !== join(source, 'node_modules'),
+      })
+    }
+  }
+}
+
 export async function materializeVendoredPackages(output: string): Promise<void> {
   const vendorRoot = join(root, 'vendor')
   for (const entry of await readdir(vendorRoot, { withFileTypes: true })) {
@@ -208,6 +241,7 @@ async function main(): Promise<void> {
     '--config.node-linker=hoisted', '--config.auto-install-peers=false',
     '--config.link-workspace-packages=true', output,
   ])
+  await materializeDeployedProjectPackages(output)
   await materializeVendoredPackages(output)
   await addDesktopHmrFallback(output)
   const [version, packageManager, commit] = await Promise.all([

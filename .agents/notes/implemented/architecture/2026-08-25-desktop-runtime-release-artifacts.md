@@ -18,6 +18,8 @@ The desktop Shell consumes the archive only after it matches a checked-in lock e
 
 The desktop deploy root explicitly includes required workspace peer dependencies. Runtime assembly resolves each required `@deepseek-ai/*` peer from its deployed consumer and refuses missing peers before writing release metadata; optional peers remain optional. This check catches import-time failures that workspace builds hide through development dependencies.
 
+pnpm 11 legacy hoisted deployment can place packages under the source `runtime/desktop/node_modules` instead of its redirected output. Assembly copies only those recorded package placements into missing output locations, omitting their source-relative `node_modules` links; dependencies resolve from the deployed hoisted tree. Deployment manifest patches use atomic replacement so pnpm hard links cannot modify source manifests.
+
 ## Consequences
 
 Core version upgrades become an explicit sequence: create a Core tag, dispatch the Runtime release workflow, record the generated target asset URL and SHA-256 in the Shell lock, then build the desktop installer. Rebuilding a Shell installer never resolves a newer Core package. A broken or unavailable locked asset fails packaging rather than silently changing the shipped agent Runtime.
