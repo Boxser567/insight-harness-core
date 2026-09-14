@@ -1281,7 +1281,7 @@ describe('ChatView', () => {
     const view = render(<h.ChatView {...h.props} />)
     const statuses = view.getAllByRole('status')
     expect(statuses.map(status => status.textContent)).toEqual([
-      '本轮运行失败API 密钥无效AUTH',
+      '本轮运行失败模型服务鉴权失败，请检查登录状态或服务授权。AUTH',
       '本轮运行失败plugin exploded',
     ])
   })
@@ -1291,7 +1291,7 @@ describe('ChatView', () => {
     const view = render(<h.ChatView {...h.props} />)
     const statuses = view.getAllByRole('status')
     expect(statuses.map(status => status.textContent)).toEqual([
-      '已达到输出 token 上限回答被截断，已有输出保留在对话中。发送“继续”可让模型接着输出。',
+      '已达到生成长度限制本次生成可能达到输出或上下文上限，已有内容已保留。发送“继续”接着完成；如仍无法生成，可先发送 /compact 压缩上下文。',
     ])
     expect(view.queryByText('本轮运行失败')).toBeNull()
   })
