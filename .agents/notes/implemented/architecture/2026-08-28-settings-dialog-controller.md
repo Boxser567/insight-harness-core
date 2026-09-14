@@ -16,6 +16,8 @@ Client plugins can contribute settings sections, but only the settings trigger o
 
 The Cordis service and the slot registration share the providing plugin's lifecycle. Plugin teardown removes the service; a later activation creates a fresh controller and shell connection.
 
+The shell combines the product-owned trigger with the Connection-owned recovery state. Dialog opening records the active element, including an account-menu action; closing restores it only while that element remains connected. A null trigger suppresses its empty row without unmounting the dialog service.
+
 ## Alternatives considered
 
 **Locate the settings trigger in the DOM and click it.** Rejected because DOM structure, classes, and event ownership are private presentation details rather than client extension APIs.
