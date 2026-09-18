@@ -126,6 +126,7 @@ const kit: Omit<QuestionComposerProps, 'matched'> = {
   useProjection: (() => undefined),
   useInput: selector => selector(inputState),
   inputActions: {
+    setSelectedSkills: () => {},
     setDraft: () => { throw new Error('unused') },
     addAttachments: () => { throw new Error('unused') },
     removeAttachment: () => { throw new Error('unused') },

@@ -214,6 +214,7 @@ function standaloneProps(
     draft: '', attachmentIds: [], draftRev: 0, phase: 'plain', occurrences: [], queue: [],
   })
   const inputActions: InputActions = {
+    setSelectedSkills: () => {},
     setDraft: () => {},
     addAttachments: () => false,
     removeAttachment: () => {},
@@ -337,6 +338,7 @@ function mount(fixture: Awaited<ReturnType<typeof bench>>) {
     draft: '', attachmentIds: [], draftRev: 0, phase: 'plain', occurrences: [], queue: [],
   }))
   const inputActions: InputActions = {
+    setSelectedSkills: () => {},
     setDraft: vi.fn(),
     addAttachments: vi.fn(() => false),
     removeAttachment: vi.fn(),

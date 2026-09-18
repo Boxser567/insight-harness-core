@@ -2,6 +2,8 @@
 
 [English](conversation.md) | 中文
 
+会话输入操作 `setSelectedSkills(names)` 保留显式技能名称，直到替换或销毁。普通消息在异步命令判定前固定选择，在序列化后添加尚不存在的原生 `/name` 引用。目录与执行由 Conversation 之外的组件负责；原始编辑器草稿用于失败恢复。
+
 Conversation 是 Client `SessionEventLikeEntry` window 与浏览器 view 之间的 target-neutral assembly 层。[`ui-conversation`](../../packages/client/ui-conversation/README.zh.md)拥有 event 与 view registry、每个 `SessionBinding` 对应的 identity-stable binding、Turn/Step Location、增量 Context assembly、target source、共享 shell 与输入编排。[`ui-chat`](../../packages/client/ui-chat/README.zh.md)和 [`ui-trajectory`](../../packages/client/ui-trajectory/README.zh.md)等 target 包拥有各自的 Definition、最终 snapshot 与渲染。
 
 本文定义数据模型与业务自有 Conversation node 的扩展路径。[Web Client 架构](web-client.zh.md)说明该子系统在 Client model 与 Slots 之间的位置；[Conversation Node 组装决策](../../.agents/notes/implemented/architecture/2026-08-09-client-conversation-node-assembly.zh.md)记录其设计理由。

@@ -25,6 +25,7 @@ import type {
 import type { InputSubmitMode } from '../contract/composer-submission.ts'
 import { SubmitMachine } from './machine.ts'
 import { DraftEditorRuntime } from './editor/runtime.ts'
+import { withSelectedSkills, validateSelectedSkills } from './selected-skills.ts'
 import type { EditorProjection } from './editor/projection.ts'
 
 /** Popup face the shell needs (dismissal only; typed structurally to avoid a value import). */
@@ -118,6 +119,7 @@ export class SessionInputShell implements SessionInput {
   /** The public provide-channel action face (one stable identity per session). */
   readonly actions: InputActions = {
     setDraft: (text) => { this.setDraft(text) },
+    setSelectedSkills: (names) => { this.setSelectedSkills(names) },
     addAttachments: ids => this.addAttachments(ids),
     removeAttachment: (id) => { this.removeAttachment(id) },
     pruneAttachments: (ids) => { this.pruneAttachments(ids) },
@@ -134,6 +136,8 @@ export class SessionInputShell implements SessionInput {
   private noticeSeq = 0
   private lastMirroredDraft = ''
   private attachmentIds: readonly DraftAttachmentId[] = []
+  private selectedSkills: readonly string[] = []
+  private submissionSkills: readonly string[] = []
   private disposed = false
   /** Draft persistence mirror (Conversation store write; receives the clipboard projection). */
   private mirrorFn: ((text: string) => void) | undefined
@@ -264,6 +268,12 @@ export class SessionInputShell implements SessionInput {
     this.draftEditor.paste(text)
   }
 
+  /** @param names - Explicit skills retained until replaced or the session input is disposed. */
+  setSelectedSkills(names: readonly string[]): void {
+    this.selectedSkills = validateSelectedSkills(names)
+    this.publish()
+  }
+
   /**
    * Enter adjudication + submit transaction + default sink. Effects fan out
    * from the machine; this method only feeds the event. Lock entry
@@ -271,6 +281,9 @@ export class SessionInputShell implements SessionInput {
    * dismisses and the menu tracks frozen.
    */
   submit(mode: InputSubmitMode = 'queue'): void {
+    if (this.snapshot.phase !== 'adjudicating' && this.snapshot.phase !== 'submitting') {
+      this.submissionSkills = [...this.selectedSkills]
+    }
     if (this.snapshot.draft.trim() === '' && this.attachmentIds.length > 0) {
       if (this.snapshot.phase === 'plain') {
         const attachmentIds = [...this.attachmentIds]
@@ -279,7 +292,7 @@ export class SessionInputShell implements SessionInput {
         const flight = this.attachmentFlightSeq
         this.attachmentFlights.set(flight, { controller, attachmentIds })
         this.commitSend(attachmentIds)
-        void this.deps.defaultSink('', attachmentIds, mode, controller.signal).then((outcome) => {
+        void this.deps.defaultSink(withSelectedSkills('', this.submissionSkills), attachmentIds, mode, controller.signal).then((outcome) => {
           if (this.disposed || !this.attachmentFlights.delete(flight)) return
           if (outcome.kind === 'success') return
           this.restoreAttachments(attachmentIds)
@@ -615,6 +628,7 @@ export class SessionInputShell implements SessionInput {
   ): void {
     const attachmentIds = [...this.attachmentIds]
     this.attachmentIds = []
+    const selectedSkills = [...this.submissionSkills]
     const occurrences = this.projection.occurrences
     const record = { draft, occurrences, attachmentIds }
     this.detachedDrafts.set(attempt.seq, record)
@@ -623,7 +637,7 @@ export class SessionInputShell implements SessionInput {
       this.failedRestoreRev = undefined
     }
     if (occurrences.length === 0) {
-      this.settleSink(attempt, this.deps.defaultSink(draft.trim(), attachmentIds, mode, attempt.signal))
+      this.settleSink(attempt, this.deps.defaultSink(withSelectedSkills(draft.trim(), selectedSkills), attachmentIds, mode, attempt.signal))
       return
     }
     const inputTriggers = this.deps.inputTriggers?.()
@@ -647,7 +661,7 @@ export class SessionInputShell implements SessionInput {
           cursor = part.offset + part.length
         }
         out += draft.slice(cursor)
-        this.settleSink(attempt, this.deps.defaultSink(out.trim(), attachmentIds, mode, attempt.signal))
+        this.settleSink(attempt, this.deps.defaultSink(withSelectedSkills(out.trim(), selectedSkills), attachmentIds, mode, attempt.signal))
       },
       (error: unknown) => {
         if (this.dead(attempt)) return
@@ -799,6 +813,7 @@ export class SessionInputShell implements SessionInput {
     const core = this.core.state
     return {
       draft: this.projection.clipboardText,
+      ...(this.selectedSkills.length === 0 ? {} : { selectedSkills: this.selectedSkills }),
       attachmentIds: this.attachmentIds,
       draftRev: this.rev,
       phase: core.phase,

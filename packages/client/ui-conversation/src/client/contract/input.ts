@@ -174,6 +174,8 @@ export interface InputTarget {
 
 /** Per-session input facade owned by the conversation wiring layer. */
 export interface SessionInput extends InputTarget {
+  /** Set explicit skills for subsequent ordinary messages. @param names - Skill names; empty clears selection. */
+  setSelectedSkills(names: readonly string[]): void
   /** Replace the whole draft (persisted-draft seed and programmatic writes). */
   setDraft(text: string): void
   /** Append ordered browser-owned attachment ids; busy admission phases refuse. */
@@ -220,6 +222,8 @@ export interface SessionInputResolver {
  * paste/…) stay InputBar-private and never ride this face.
  */
 export interface InputActions {
+  /** Set explicit skills for subsequent ordinary messages. @param names - Skill names; empty clears selection. */
+  setSelectedSkills(names: readonly string[]): void
   /** Replace the whole draft (persisted-draft seed and programmatic writes). */
   setDraft(text: string): void
   /** Append ordered browser-owned attachment ids; busy admission phases refuse. */
@@ -244,6 +248,8 @@ export type ConsumeTokenGuard = ConsumeTokenRequest['guard']
 
 /** Published input state (the currency; per-session). */
 export interface InputState {
+  /** Explicit skill selection for subsequent ordinary messages, scoped to this input lifetime. */
+  readonly selectedSkills?: readonly string[]
   /** Clipboard-text projection of the editor document (chips expanded to their clipboard form). */
   readonly draft: string
   /** Ordered runtime-only attachment ids; browser objects stay in ConversationController. */

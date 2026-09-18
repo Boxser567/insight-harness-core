@@ -327,6 +327,7 @@ describe('ImageGallery', () => {
       useTrajectory,
       useInput,
       inputActions: {
+        setSelectedSkills: () => {},
         setDraft: vi.fn(),
         addAttachments: vi.fn(() => true),
         removeAttachment: vi.fn(),

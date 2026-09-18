@@ -119,6 +119,10 @@ try {
 selector 必须是 owner currency 的纯函数。非 null 返回值作为 `matched` 传给组件；`PropsRuntime<'conversation.composer'>` 提供标准 Session 与 global props。Chain 顺序仍按 `priority` 升序，再按注册顺序；首个返回非 null 的 selector 获选。Shell 会在 takeover 下保持默认 composer 挂载。Request 状态、listener、response encoding 和任何 request-specific child slot 都属于业务 package，不进入 `SessionSnapshot`，也不由 core 包声明。
 
 <a id="model-experience"></a>
+## 输入框显式技能
+
+`inputActions.setSelectedSkills(names)` 在当前输入框生命周期内保留经过校验的技能名称。提交在异步命令判定前固定选择；普通消息出口在引用序列化后添加尚不存在的原生 `/name` 引用。命令保持原语义，手动引用保持完整，发送失败时恢复原始草稿与附件。队列使用提交文本，不重新读取选择。选择不跨重启持久化。
+
 ## 模型体验
 
 无，因为本包渲染浏览器状态，并通过 Session Controller API 发送用户确认提交的输入，而不构造模型请求。

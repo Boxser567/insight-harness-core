@@ -119,6 +119,10 @@ try {
 The selector must be a pure function of the owner currency. Its non-null return is delivered to the component as `matched`; `PropsRuntime<'conversation.composer'>` supplies the standard Session and global props. Chain order remains ascending `priority`, then registration order, and the first non-null selector wins. The shell keeps the default composer mounted beneath a takeover. Request state, listeners, response encoding, and any request-specific child slots belong to the business package; they are not carried by `SessionSnapshot` or declared by this core package.
 
 <a id="model-experience"></a>
+## Explicit composer skills
+
+`inputActions.setSelectedSkills(names)` retains validated skill names in the current input lifetime. Submit captures them before asynchronous command adjudication; the ordinary-message sink prefixes missing native `/name` references after reference serialization. Commands retain their meaning, manual references remain intact, and failed sends restore original drafts and attachments. Queue items retain their submitted text without re-reading selection. Selection is not restart-persistent.
+
 ## Model Experience
 
 None, as this package renders browser state and sends user-admitted inputs through Session Controller APIs without constructing model requests.
