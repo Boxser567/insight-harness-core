@@ -1,6 +1,7 @@
 /** Session-addressed, cold-readable skill catalog Remote. */
 
 import type { Context } from '@deepseek-ai/cordis'
+import { isAbsolute, relative, resolve } from 'node:path'
 import type {} from '@deepseek-ai/dsh-agent-presets/types'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import { SessionQueryError } from '@deepseek-ai/dsh-session-query'
@@ -79,7 +80,7 @@ export class SessionSkillCatalog extends TypertRemoteService {
         skills: skills.map(skill => ({
           name: skill.name,
           ...skill.path === undefined ? {} : { path: skill.path },
-          ...(skill.source === 'bundled' ? { bundled: true } : {}),
+          ...(skill.source === 'bundled' && skill.resourceBase?.kind === 'directory' && isBundledDirectory(skill.resourceBase.path) ? { bundled: true } : {}),
           ...(typeof skill.metadata?.displayName === 'string' ? { displayName: skill.metadata.displayName } : {}),
           ...(typeof skill.metadata?.order === 'number' && Number.isFinite(skill.metadata.order) ? { order: skill.metadata.order } : {}),
           ...(typeof skill.metadata?.insightPickerVisible === 'boolean' ? { pickerVisible: skill.metadata.insightPickerVisible } : {}),
@@ -112,3 +113,11 @@ export class SessionSkillCatalog extends TypertRemoteService {
 }
 
 export default SessionSkillCatalog
+
+/** Match the configured desktop bundle root, excluding unrelated plugin-bundled skills. */
+function isBundledDirectory(directory: string): boolean {
+  const root = process.env.DSH_BUNDLED_SKILL_DIR
+  if (!root) return false
+  const path = relative(resolve(root), resolve(directory))
+  return path !== '' && path !== '..' && !path.startsWith(`..${process.platform === 'win32' ? '\\' : '/'}`) && !isAbsolute(path)
+}

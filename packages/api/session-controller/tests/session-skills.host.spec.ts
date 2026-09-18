@@ -4,7 +4,8 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import SessionStore, { SESSION_FORMAT_VERSION, SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
 import { SessionQueryError, type SessionObservation } from '@deepseek-ai/dsh-session-query'
 import type {} from '@deepseek-ai/dsh-skill'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+afterEach(() => vi.unstubAllEnvs())
 import { SessionSkillCatalog } from '../src/skill-catalog.ts'
 
 function observation(
@@ -46,6 +47,7 @@ async function context(): Promise<Context> {
 describe('SessionSkillCatalog', () => {
   it('reads a cold Session catalog without resuming an Agent', async () => {
     const ctx = await context()
+    vi.stubEnv('DSH_BUNDLED_SKILL_DIR', '/desktop/skills')
     const sessionId = SessionId('cold-skills')
     const observed = observation(sessionId, { cwd: '/cold/project' })
     const dispose = vi.spyOn(observed, Symbol.dispose)
@@ -56,12 +58,16 @@ describe('SessionSkillCatalog', () => {
       {
         name: 'review',
         source: 'bundled',
+        resourceBase: { kind: 'directory', path: '/desktop/skills/review' },
         metadata: { displayName: '审查', order: 2, insightPickerVisible: false, privateValue: 'not-for-renderer' },
         description: 'Review the current change.',
         whenToUse: 'Before publishing.',
         path: '/cold/project/.agents/skills/review/SKILL.md',
         invocation: { modelInvocable: true, userInvocable: true },
       },
+      { name: 'plugin-skill', description: 'Other plugin', source: 'bundled',
+        resourceBase: { kind: 'directory', path: '/desktop/plugins/genui' },
+        invocation: { modelInvocable: true, userInvocable: true } },
       {
         name: 'model-only',
         description: 'Not shown to the user.',
@@ -82,7 +88,7 @@ describe('SessionSkillCatalog', () => {
         whenToUse: 'Before publishing.',
         path: '/cold/project/.agents/skills/review/SKILL.md',
         modelInvocable: true,
-      }],
+      }, { name: 'plugin-skill', description: 'Other plugin', modelInvocable: true }],
     })
     expect(observeSession).toHaveBeenCalledWith(sessionId)
     expect(dispose).toHaveBeenCalledOnce()
