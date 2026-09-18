@@ -124,7 +124,7 @@ const kitBase: Omit<QuestionComposerProps, 'matched' | 'useStore' | 'actions'> =
   useProjection: (() => undefined),
   useInput: selector => selector(inputState),
   inputActions: {
-    setSelectedSkills: () => {},
+    toggleSkill: () => {},
     setDraft: () => { throw new Error('unused') },
     addAttachments: () => { throw new Error('unused') },
     removeAttachment: () => { throw new Error('unused') },

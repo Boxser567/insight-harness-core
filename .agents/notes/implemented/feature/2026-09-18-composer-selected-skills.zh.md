@@ -21,3 +21,5 @@ Status: implemented
 ## Consequences
 
 选择与输入框共用生命周期，不跨重启保留。历史不区分菜单引用与手动输入。产品菜单负责目录与单选策略；通用输入框支持多个名称。服务端识别需要独立验收。
+
+This persistent-selection design is superseded by visible draft skill toggles. The current action is `toggleSkill(name)`; no hidden prefix or cross-message selection remains.

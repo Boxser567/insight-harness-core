@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-18-composer-selected-skills.md
-2026-09-18-composer-selected-skills.md: 6411f142f6030fb06a932751493f4a678104b3cb
-2026-09-18-composer-selected-skills.zh.md: dd5bfc153d00ceb0d1e014f90068415cfa454855
+2026-09-18-composer-selected-skills.md: 0d1af420d85a395eaaa681a6e89a06da9652896e
+2026-09-18-composer-selected-skills.zh.md: b66ac1336c696def241a104b20d3b30b59ff0f1c

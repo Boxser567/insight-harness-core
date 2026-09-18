@@ -7,6 +7,8 @@ kind: "package-reference"
 
 [English](README.md) | 中文
 
+客户端 `skillCatalog` 服务与产品快捷菜单共用会话目录请求和订阅。Host 的 `skills/change` 同时使菜单和草稿词库失效，活跃使用方重新加载各自作用域目录；旧请求不能覆盖新结果。
+
 ## 概述
 
 `dsh-client-ui-skill` 让用户通过 `/` 建议选择或直接键入 `/name` 来调用 skill（技能）。同一条字面命令可以从 Web 编辑器、TUI 和 ACP（Agent Client Protocol）一致地加载 skill；如果名称与宿主命令相同，它仍会解析为该命令。skill 调用在对话中显示为可展开的 `Instructions` 卡片；即使已安装的 skill 目录发生变化，卡片落定后的内容仍保持稳定。

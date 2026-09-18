@@ -323,7 +323,7 @@ function panelProps(data: WorkflowRunChatData, sessions = listState(), openSessi
     useTrajectory: selector => selector(panelTrajectory),
     useInput: () => { throw new Error('unused') },
     inputActions: {
-      setSelectedSkills: () => {},
+      toggleSkill: () => {},
       setDraft: () => {},
       addAttachments: () => false,
       removeAttachment: () => {},

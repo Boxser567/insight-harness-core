@@ -79,6 +79,10 @@ export class SessionSkillCatalog extends TypertRemoteService {
         skills: skills.map(skill => ({
           name: skill.name,
           ...skill.path === undefined ? {} : { path: skill.path },
+          ...(skill.source === 'bundled' ? { bundled: true } : {}),
+          ...(typeof skill.metadata?.displayName === 'string' ? { displayName: skill.metadata.displayName } : {}),
+          ...(typeof skill.metadata?.order === 'number' && Number.isFinite(skill.metadata.order) ? { order: skill.metadata.order } : {}),
+          ...(typeof skill.metadata?.insightPickerVisible === 'boolean' ? { pickerVisible: skill.metadata.insightPickerVisible } : {}),
           description: skill.description,
           ...skill.whenToUse === undefined ? {} : { whenToUse: skill.whenToUse },
           modelInvocable: skill.invocation.modelInvocable,

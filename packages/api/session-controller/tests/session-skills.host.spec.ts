@@ -55,6 +55,8 @@ describe('SessionSkillCatalog', () => {
     const list = vi.fn(() => Promise.resolve([
       {
         name: 'review',
+        source: 'bundled',
+        metadata: { displayName: '审查', order: 2, insightPickerVisible: false, privateValue: 'not-for-renderer' },
         description: 'Review the current change.',
         whenToUse: 'Before publishing.',
         path: '/cold/project/.agents/skills/review/SKILL.md',
@@ -72,6 +74,10 @@ describe('SessionSkillCatalog', () => {
     await expect(catalog.list({ sessionId }, new AbortController().signal)).resolves.toEqual({
       skills: [{
         name: 'review',
+        bundled: true,
+        displayName: '审查',
+        order: 2,
+        pickerVisible: false,
         description: 'Review the current change.',
         whenToUse: 'Before publishing.',
         path: '/cold/project/.agents/skills/review/SKILL.md',

@@ -11,4 +11,11 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     Record<SessionControllerRemoteEvent, true> {}
 }
 
+declare module '@deepseek-ai/cordis' {
+  interface Events {
+    /** Skill catalog invalidation; consumers refetch their scoped view. @mode emit */
+    'skills/change'(): void
+  }
+}
+
 export {}

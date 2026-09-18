@@ -479,3 +479,21 @@ describe('reference preview', () => {
     expect(openResource).not.toHaveBeenCalled()
   })
 })
+
+describe('shared skill catalog refresh', () => {
+  it('refreshes active product consumers and native lexicons after host directory changes', async () => {
+    let rows = CATALOG
+    const list = vi.fn(async () => ({ ok: true as const, value: { skills: rows } }))
+    const { ctx, source, remote } = await bench(list)
+    const catalog = ctx.skillCatalog
+    const refresh = vi.fn(() => { void catalog.list(sid('s1')) })
+    const off = catalog.subscribe(sid('s1'), refresh)
+    await catalog.list(sid('s1'))
+    expect(source.lexicon?.(proj('s1'))).toEqual(CATALOG.map(row => row.name))
+    rows = [{ name: 'added', description: 'new', modelInvocable: true }]
+    remote.emit('skills/change', [])
+    await vi.waitFor(() => expect(source.lexicon?.(proj('s1'))).toEqual(['added']))
+    expect(list).toHaveBeenCalledTimes(2)
+    off()
+  })
+})

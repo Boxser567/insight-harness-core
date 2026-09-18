@@ -11,6 +11,8 @@ English | [中文](README.zh.md)
 
 `dsh-client-ui-skill` lets users invoke a skill by choosing it from the `/` suggestions or typing `/name` directly. The same literal command loads the skill consistently from the Web composer, TUI, and ACP, while a name shared with a host command continues to resolve as that command. Skill calls appear in the conversation as expandable `Instructions` cards whose settled contents remain stable when the installed skill catalog changes.
 
+The `skillCatalog` client service shares session metadata requests and subscriptions with product shortcut menus. Host `skills/change` invalidates both menus and the draft lexicon; active consumers reload their scoped catalog. Late responses cannot replace newer entries.
+
 ## Table of Contents
 
 - [Use this package](#use-this-package)

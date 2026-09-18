@@ -2,7 +2,7 @@
 
 English | [中文](conversation.zh.md)
 
-The session input action `setSelectedSkills(names)` retains explicit skill names until replaced or disposed. Ordinary submissions capture the selection before asynchronous adjudication and add missing native `/name` references after serialization. Catalogs and execution remain outside Conversation; the original editor draft is retained for failure restoration.
+`inputActions.toggleSkill(name)` adds or removes a visible native `/name` reference in the current draft using a local editor transaction. Selection is derived from draft text; successful sends clear it and failures restore it with attachments. Structured references remain intact, commands retain native adjudication, and queued messages use their captured text.
 
 Conversation is the target-neutral assembly layer between a Client `SessionEventLikeEntry` window and browser views. [`ui-conversation`](../../packages/client/ui-conversation/README.md) owns the event and view registries, one identity-stable binding per `SessionBinding`, Turn/Step locations, incremental Context assembly, target sources, the shared shell, and input orchestration. Target packages such as [`ui-chat`](../../packages/client/ui-chat/README.md) and [`ui-trajectory`](../../packages/client/ui-trajectory/README.md) own their Definitions, final snapshots, and rendering.
 

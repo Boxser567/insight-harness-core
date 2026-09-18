@@ -121,7 +121,7 @@ The selector must be a pure function of the owner currency. Its non-null return 
 <a id="model-experience"></a>
 ## Explicit composer skills
 
-`inputActions.setSelectedSkills(names)` retains validated skill names in the current input lifetime. Submit captures them before asynchronous command adjudication; the ordinary-message sink prefixes missing native `/name` references after reference serialization. Commands retain their meaning, manual references remain intact, and failed sends restore original drafts and attachments. Queue items retain their submitted text without re-reading selection. Selection is not restart-persistent.
+`inputActions.toggleSkill(name)` adds or removes a visible native `/name` reference in the current draft using a local editor transaction. Selection is derived from draft text; successful sends clear it and failures restore it with attachments. Structured references remain intact, commands retain native adjudication, and queued messages use their captured text.
 
 ## Model Experience
 

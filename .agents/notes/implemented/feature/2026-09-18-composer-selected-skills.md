@@ -21,3 +21,5 @@ The input shell owns a selected-name array exposed through its existing snapshot
 ## Consequences
 
 Selection shares the input lifetime without restart persistence. History does not distinguish menu references from manually typed references. Product menus own catalogs and single-selection policy; the generic composer accepts multiple names. Service recognition requires separate acceptance testing.
+
+This persistent-selection design is superseded by visible draft skill toggles. The current action is `toggleSkill(name)`; no hidden prefix or cross-message selection remains.

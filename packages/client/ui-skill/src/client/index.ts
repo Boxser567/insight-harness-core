@@ -52,6 +52,20 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 }
 
+/** Shared session catalog used by slash completion and product shortcut menus. */
+export interface SkillCatalog {
+  /** @param sessionId - Target session. @returns Shared current metadata request. */
+  list(sessionId: SessionId): Promise<readonly SkillEntry[]>
+  /** @param sessionId - Target session. @param listener - Called after invalidation or settlement. @returns Unsubscribe. */
+  subscribe(sessionId: SessionId, listener: () => void): () => void
+}
+
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    skillCatalog: SkillCatalog
+  }
+}
+
 /** One session's catalog fetch: the shared promise plus its own abort handle. */
 interface CatalogFetch {
   readonly promise: Promise<readonly SkillEntry[]>
@@ -110,6 +124,7 @@ export function apply(ctx: ClientContext): void {
     promise.then(
       // Settled snapshot backs the synchronous lexicon reads.
       (skills) => {
+        if (fetches.get(sessionId) !== entry) return
         entry.settled = skills
         notifyLexicon(sessionId)
       },
@@ -127,6 +142,7 @@ export function apply(ctx: ClientContext): void {
     fetches.delete(key)
     entry.abort.abort()
     notifyLexicon(key)
+    if (lexiconListeners.has(key)) void fetchCatalog(key).catch(() => {})
   }
 
   const clearAll = (): void => {
@@ -208,12 +224,26 @@ export function apply(ctx: ClientContext): void {
   const inputTriggers = ctx.get('inputTriggers') as InputTriggerServiceContract
   // A preset decides which skill providers an agent reads, so a switched
   // session's cached catalog belongs to the composition it no longer runs.
+  ctx.provide('skillCatalog', {
+    list: fetchCatalog,
+    subscribe(sessionId, listener) {
+      const listeners = lexiconListeners.get(sessionId) ?? new Set()
+      listeners.add(listener)
+      lexiconListeners.set(sessionId, listeners)
+      return () => {
+        listeners.delete(listener)
+        if (listeners.size === 0) lexiconListeners.delete(sessionId)
+      }
+    },
+  })
+  ctx.remote.$on('skills/change', clearAll)
   ctx.remote.$on('agent-preset/selected', invalidate)
   ctx.on('connection/reset', clearAll)
   ctx.effect(() => {
     const unregister = inputTriggers.registerSource(source)
     return () => {
       unregister()
+      lexiconListeners.clear()
       clearAll()
     }
   }, 'ui-skill: source')

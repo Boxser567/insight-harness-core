@@ -389,7 +389,7 @@ function makeHarness(
     },
     useInput: (() => { throw new Error('unused') }),
     inputActions: {
-      setSelectedSkills: () => {},
+      toggleSkill: () => {},
       setDraft: () => {},
       addAttachments: () => true,
       removeAttachment: () => {},

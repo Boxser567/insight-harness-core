@@ -57,6 +57,8 @@ export interface SkillInvocationPolicy {
 export interface SkillSummary {
   /** Absolute instruction file path when supplied by the provider; absent for virtual skills. */
   readonly path?: string
+  /** Optional provider metadata for presentation consumers; not a skill body. */
+  readonly metadata?: Readonly<Record<string, unknown>>
   /** Kebab-case identifier used to address the skill. */
   readonly name: string
   /** Short routing description shown by discovery consumers. */
@@ -767,7 +769,7 @@ function validateDefinition(skill: SkillDefinition): void {
 }
 
 function toSummary(skill: SkillDefinition | SkillCandidate): SkillSummary {
-  const { name, description, whenToUse, invocation, source, provider, resourceBase } = skill
+  const { name, description, whenToUse, invocation, source, provider, resourceBase, metadata } = skill
   return {
     name,
     ...skill.path === undefined ? {} : { path: skill.path },
@@ -777,6 +779,7 @@ function toSummary(skill: SkillDefinition | SkillCandidate): SkillSummary {
     source,
     provider,
     ...resourceBase !== undefined ? { resourceBase } : {},
+    ...metadata !== undefined ? { metadata } : {},
   }
 }
 

@@ -226,6 +226,12 @@ export interface SkillListRequest {
 export interface SkillEntry {
   /** Absolute SKILL.md path when supplied by a filesystem provider. */
   readonly path?: string
+  /** Presentation metadata, never an executable body or filesystem path. */
+  readonly displayName?: string
+  readonly order?: number
+  readonly pickerVisible?: boolean
+  /** Whether the winning definition came from the packaged skill root. */
+  readonly bundled?: boolean
   /** Kebab-case identifier referenced as `/name`. */
   readonly name: string
   /** Short routing description. */
