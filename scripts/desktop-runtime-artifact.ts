@@ -128,6 +128,13 @@ function run(command: string, args: string[], shell = false): Promise<void> {
 }
 
 function runPnpm(args: string[]): Promise<void> {
+  const pnpmScript = process.env.npm_execpath
+  if (pnpmScript !== undefined && pnpmScript !== '') {
+    // Keep the package manager on the same Node binary that launched this
+    // script. Core's runtime deploy is memory-sensitive on large alpha
+    // workspaces, and a PATH-resolved Corepack shim may select an older Node.
+    return run(process.execPath, [pnpmScript, ...args])
+  }
   const { command, shell } = pnpmInvocation()
   return run(command, args, shell)
 }
@@ -239,7 +246,8 @@ async function main(): Promise<void> {
   await runPnpm([
     '--filter', DEPLOY_ROOT_PACKAGE, 'deploy', '--legacy', '--prod',
     '--config.node-linker=hoisted', '--config.auto-install-peers=false',
-    '--config.link-workspace-packages=true', output,
+    '--config.link-workspace-packages=true', '--config.allowUnusedPatches=true',
+    '--child-concurrency=1', '--network-concurrency=1', output,
   ])
   await materializeDeployedProjectPackages(output)
   await materializeVendoredPackages(output)
