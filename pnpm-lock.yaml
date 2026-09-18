@@ -12831,6 +12831,9 @@ importers:
       '@deepseek-ai/dsh-bash-local':
         specifier: workspace:^
         version: link:../../packages/shell/bash-local
+      '@deepseek-ai/dsh-client-store':
+        specifier: workspace:^
+        version: link:../../packages/client/store
       '@deepseek-ai/dsh-client-ui-primitives':
         specifier: workspace:^
         version: link:../../packages/client/ui-primitives
