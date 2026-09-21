@@ -32,7 +32,7 @@ describe.skipIf(process.platform !== 'win32')('managed Windows ACL control pipe'
       const handle = ctx.subprocess.spawn({
         argv: mode === 'full-access' ? command : [process.execPath, '--import', 'tsx/esm', runner,
           '--workspace', workspace, '--temp', temp, '--mode', mode, '--', ...command],
-        cwd: workspace,
+        cwd: process.cwd(),
         stdio: { stdin: 'ignore', stdout: { maxBytes: 1024 }, stderr: { maxBytes: 4096 } },
         graceMs: 1000,
       })
