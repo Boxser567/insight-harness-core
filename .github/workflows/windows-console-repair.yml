@@ -1,0 +1,30 @@
+name: Windows console repair validation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/windows-console-repair-20260921]
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    env:
+      DSH_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile
+      - name: Native console, PowerShell, cancellation and sandbox regressions
+        run: >-
+          pnpm exec vitest run --testTimeout=120000 --hookTimeout=120000
+          packages/subprocess/win32-process/tests
+          packages/subprocess/subprocess-local/tests/native-windows.spec.ts
+          packages/sandbox/sandbox-windows-acl/tests/control.spec.ts
+          packages/sandbox/sandbox-windows-acl/tests/runner.spec.ts

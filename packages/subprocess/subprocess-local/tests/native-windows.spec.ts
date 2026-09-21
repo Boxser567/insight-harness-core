@@ -98,7 +98,7 @@ describe.skipIf(!windowsNative)('Windows Job native containment', () => {
     try {
       expect(await handle.done).toEqual({ exitCode: 0, signal: null })
       expect(handle.collected.stderr?.readFrom(0).text).toBe('')
-      expect(JSON.parse(handle.collected.stdout?.readFrom(0).text ?? '')).toMatchObject({ visible: false })
+      expect(JSON.parse(handle.collected.stdout?.readFrom(0).text ?? '')).toMatchObject({ attached: false, visible: false })
     } finally {
       handle.terminate()
       await handle.waitForExit()

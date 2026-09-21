@@ -18,6 +18,35 @@ afterEach(async () => {
 })
 
 describe.skipIf(process.platform !== 'win32')('managed Windows ACL control pipe', () => {
+  it.each(['full-access', 'read-only', 'workspace-write'])('executes 20 fresh PowerShell processes in %s mode', async (mode) => {
+    scratch = await mkdtemp(join(tmpdir(), 'dsh-acl-pwsh-'))
+    const workspace = join(scratch, 'workspace')
+    const temp = join(scratch, 'temp')
+    await mkdir(workspace)
+    await mkdir(temp)
+    ctx = new Context()
+    await ctx.plugin(LocalSubprocessRuntime)
+    const runner = fileURLToPath(new URL('../src/runner.ts', import.meta.url))
+    for (let index = 0; index < 20; index++) {
+      const command = ['pwsh', '-NoLogo', '-NonInteractive', '-NoProfile', '-Command', `Write-Output 'pwsh-${index}'`]
+      const handle = ctx.subprocess.spawn({
+        argv: mode === 'full-access' ? command : [process.execPath, '--import', 'tsx/esm', runner,
+          '--workspace', workspace, '--temp', temp, '--mode', mode, '--', ...command],
+        cwd: workspace,
+        stdio: { stdin: 'ignore', stdout: { maxBytes: 1024 }, stderr: { maxBytes: 4096 } },
+        graceMs: 1000,
+      })
+      try {
+        expect(await handle.done).toEqual({ exitCode: 0, signal: null })
+        expect(handle.collected.stdout?.readFrom(0).text.trim()).toBe(`pwsh-${index}`)
+        expect(handle.collected.stderr?.readFrom(0).text).toBe('')
+      } finally {
+        handle.terminate()
+        await handle.waitForExit()
+      }
+    }
+  })
+
   it.each(['read-only', 'workspace-write'])('runs without a visible console in %s mode', async (mode) => {
     scratch = await mkdtemp(join(tmpdir(), 'dsh-acl-console-'))
     const workspace = join(scratch, 'workspace')
@@ -38,7 +67,7 @@ describe.skipIf(process.platform !== 'win32')('managed Windows ACL control pipe'
     try {
       expect(await handle.done).toEqual({ exitCode: 0, signal: null })
       expect(handle.collected.stderr?.readFrom(0).text).toBe('')
-      expect(JSON.parse(handle.collected.stdout?.readFrom(0).text ?? '')).toMatchObject({ visible: false })
+      expect(JSON.parse(handle.collected.stdout?.readFrom(0).text ?? '')).toMatchObject({ attached: false, visible: false })
     } finally {
       handle.terminate()
       await handle.waitForExit()
