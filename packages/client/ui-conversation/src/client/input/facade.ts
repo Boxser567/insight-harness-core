@@ -269,17 +269,14 @@ export class SessionInputShell implements SessionInput {
   /** Toggle a visible skill token without rebuilding reference nodes. @param name - Exact skill name. */
   toggleSkill(name: string): void {
     if (this.snapshot.phase !== 'plain' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) return
-    this.applyEdit(() => {
-      const projection = $projectComposer(key => this.occurrenceIdOf(key))
-      const spans = skillTokenSpans(projection.detectText, name)
-      if (spans.length > 0) {
-        for (const span of [...spans].reverse()) $replaceDetectSpanWithText(span, '')
-      } else {
-        const root = $getRoot()
-        if (root.getChildrenSize() === 0) root.append($createParagraphNode())
-        root.selectEnd().insertText(`${projection.detectText && !/\s$/.test(projection.detectText) ? ' ' : ''}/${name} `)
-      }
-    })
+    const spans = skillTokenSpans(this.projection.detectText, name)
+    if (spans.length > 0) {
+      for (const span of [...spans].reverse()) this.draftEditor.replaceText(span, '')
+      return
+    }
+    this.draftEditor.appendText(
+      `${this.projection.detectText && !/\s$/.test(this.projection.detectText) ? ' ' : ''}/${name} `,
+    )
   }
 
   /**

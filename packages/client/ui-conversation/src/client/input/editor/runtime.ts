@@ -184,6 +184,16 @@ export class DraftEditorRuntime {
     }, PASTE_TAG)
   }
 
+  /** Append plain text at the end of the draft. */
+  appendText(text: string): void {
+    if (text === '') return
+    this.applyEdit(() => {
+      const root = $getRoot()
+      if (root.getChildrenSize() === 0) root.append($createParagraphNode())
+      root.selectEnd().insertText(text)
+    })
+  }
+
   /**
    * The live selection as a detect-coordinate span (menu-launcher synthetic
    * hits replace it on pick); an absent selection answers a collapsed span at

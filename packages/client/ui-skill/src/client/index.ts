@@ -142,7 +142,6 @@ export function apply(ctx: ClientContext): void {
     fetches.delete(key)
     entry.abort.abort()
     notifyLexicon(key)
-    if (lexiconListeners.has(key)) void fetchCatalog(key).catch(() => {})
   }
 
   const clearAll = (): void => {
@@ -225,7 +224,7 @@ export function apply(ctx: ClientContext): void {
   // A preset decides which skill providers an agent reads, so a switched
   // session's cached catalog belongs to the composition it no longer runs.
   ctx.provide('skillCatalog', {
-    list: fetchCatalog,
+    list: sessionId => fetchCatalog(sessionId).promise,
     subscribe(sessionId, listener) {
       const listeners = lexiconListeners.get(sessionId) ?? new Set()
       listeners.add(listener)
@@ -243,8 +242,8 @@ export function apply(ctx: ClientContext): void {
     const unregister = inputTriggers.registerSource(source)
     return () => {
       unregister()
-      lexiconListeners.clear()
       clearAll()
+      lexiconListeners.clear()
     }
   }, 'ui-skill: source')
 }
