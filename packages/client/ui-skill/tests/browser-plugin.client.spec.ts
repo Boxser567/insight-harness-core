@@ -492,8 +492,31 @@ describe('shared skill catalog refresh', () => {
     expect(source.lexicon?.(proj('s1'))).toEqual(CATALOG.map(row => row.name))
     rows = [{ name: 'added', description: 'new', modelInvocable: true }]
     remote.emit('skills/change', [])
-    await vi.waitFor(() => expect(source.lexicon?.(proj('s1'))).toEqual(['added']))
+    await vi.waitFor(() => {
+      expect(source.lexicon?.(proj('s1'))).toEqual(['added'])
+    })
     expect(list).toHaveBeenCalledTimes(2)
+    off()
+  })
+
+  it('recovers an active product consumer after its first catalog request fails', async () => {
+    const list = vi.fn<ListFn>()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockImplementation(listOk(CATALOG))
+    const { ctx, source, remote } = await bench(list)
+    const catalog = ctx.skillCatalog
+    const sessionId = sid('recover')
+    const refresh = vi.fn(() => { void catalog.list(sessionId).catch(() => {}) })
+    const off = catalog.subscribe(sessionId, refresh)
+
+    await expect(catalog.list(sessionId)).rejects.toThrow('offline')
+    remote.emit('skills/change', [])
+
+    await vi.waitFor(() => {
+      expect(source.lexicon?.(proj('recover'))).toEqual(CATALOG.map(row => row.name))
+    })
+    expect(list).toHaveBeenCalledTimes(2)
+    expect(refresh).toHaveBeenCalled()
     off()
   })
 })

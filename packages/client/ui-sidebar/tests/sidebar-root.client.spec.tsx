@@ -55,7 +55,9 @@ function mountShell({ collapsed = false, width = 300 }: { collapsed?: boolean; w
       renderSlot={((
         key: string,
         owner: SidebarFooterActionOwnerProps | SidebarSectionOwnerProps | SidebarSettingsOwnerProps,
+        options?: { fallback?: ReactNode },
       ) => {
+        if (key === 'sidebar.brand.control') return options?.fallback ?? null
         if (key === 'sidebar.brand.mark') return brandMark
         if (key === 'sidebar.brand.name') return brandName
         if (key === 'sidebar.toggle.badge') return null
@@ -107,6 +109,27 @@ describe('SidebarRoot shell', () => {
     expect(b.startSession).toHaveBeenCalledTimes(2)
     fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }))
     expect(b.toggleSidebar).toHaveBeenCalledOnce()
+  })
+
+  it('lets a deployment replace the complete expanded brand control', () => {
+    const startSession = vi.fn()
+    render(<SidebarRoot
+      collapsed={false} width={300}
+      useSessions={neverHook} useSessionStatus={useSessionStatus} useSessionRetainInfo={neverHook}
+      usePanelInfo={usePanelInfo} selectPanel={() => {}} usePanels={selector => selector([])}
+      useResource={useResource} useWorkspaces={neverHook}
+      startSession={startSession} toggleSidebar={vi.fn()} t={t}
+      renderSlot={((key: string, owner: { size?: number }, options?: { fallback?: ReactNode }) =>
+        key === 'sidebar.brand.control'
+          ? <button type="button" aria-label="Product website" data-size={owner.size}>Product</button>
+          : options?.fallback ?? null) as SidebarRootComponentProps['renderSlot']}
+    />)
+
+    const brand = screen.getByRole('button', { name: 'Product website' })
+    expect(brand.dataset.size).toBe('24')
+    fireEvent.click(brand)
+    expect(startSession).not.toHaveBeenCalled()
+    expect(screen.getAllByRole('button', { name: 'New session' })).toHaveLength(1)
   })
 
   it('renders generic brand fallbacks when no package fills the slots', () => {

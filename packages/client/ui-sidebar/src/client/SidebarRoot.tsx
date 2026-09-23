@@ -206,9 +206,10 @@ export function SidebarRoot({
           traffic lights and keeps the toggle at the sidebar's top-right. */}
       {darwinDesktop && <div className={css.topStrip}>{toggle}</div>}
       <div className={css.logoRow}>
-        {/* Expanded, the brand doubles as a New Session shortcut; the
-            collapsed rail's logo is the expand toggle below instead. */}
-        {wide && (
+        {/* The default expanded brand doubles as a New Session shortcut;
+            deployments may replace the complete control. The collapsed
+            rail's logo is the expand toggle below instead. */}
+        {wide && renderSlot('sidebar.brand.control', { size: 24 }, { fallback: (
           <button
             type="button"
             className={clsx(css.brand, css.wide)}
@@ -233,7 +234,7 @@ export function SidebarRoot({
               </span>
             </span>
           </button>
-        )}
+        ) })}
         {!darwinDesktop && toggle}
       </div>
 

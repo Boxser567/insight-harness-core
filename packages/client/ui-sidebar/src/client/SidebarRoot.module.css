@@ -216,6 +216,10 @@
   overflow: hidden;
 }
 
+:global([data-platform='darwin']) .logoRow {
+  margin-bottom: 16px;
+}
+
 .collapsed .logoRow {
   height: 36px;
   padding: 0;

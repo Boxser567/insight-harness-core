@@ -90,57 +90,62 @@ exports[`sidebar shell snapshots > renders Windows caption controls in expanded 
     <div
       class="logoRow"
     >
-      <button
-        aria-label="New session"
-        class="brand wide"
-        type="button"
+      <div
+        data-slot="sidebar.brand.control"
+        style="display: contents;"
       >
-        <span
-          aria-hidden="true"
-          class="brandIdentity"
+        <button
+          aria-label="New session"
+          class="brand wide"
+          type="button"
         >
           <span
-            class="brandMark"
+            aria-hidden="true"
+            class="brandIdentity"
           >
-            <div
-              data-slot="sidebar.brand.mark"
-              style="display: contents;"
+            <span
+              class="brandMark"
             >
-              <svg
-                aria-hidden="true"
-                data-content="965fe321"
-                fill="none"
-                height="17.6580310880829"
-                viewBox="0 0 23.16 17.04"
-                width="24"
-              />
-            </div>
-          </span>
-          <span
-            class="brandName"
-          >
-            <div
-              data-slot="sidebar.brand.name"
-              style="display: contents;"
+              <div
+                data-slot="sidebar.brand.mark"
+                style="display: contents;"
+              >
+                <svg
+                  aria-hidden="true"
+                  data-content="965fe321"
+                  fill="none"
+                  height="17.6580310880829"
+                  viewBox="0 0 23.16 17.04"
+                  width="24"
+                />
+              </div>
+            </span>
+            <span
+              class="brandName"
             >
-              <span
-                class="localBuildBrand"
+              <div
+                data-slot="sidebar.brand.name"
+                style="display: contents;"
               >
                 <span
-                  class="localBuildTitle"
+                  class="localBuildBrand"
                 >
-                  DSH Local Build
+                  <span
+                    class="localBuildTitle"
+                  >
+                    DSH Local Build
+                  </span>
+                  <span
+                    class="buildVersion"
+                  >
+                    1.2.3-rc.4-abc1234-dirty
+                  </span>
                 </span>
-                <span
-                  class="buildVersion"
-                >
-                  1.2.3-rc.4-abc1234-dirty
-                </span>
-              </span>
-            </div>
+              </div>
+            </span>
           </span>
-        </span>
-      </button>
+        </button>
+      </div>
       <button
         aria-label="Collapse sidebar"
         class="iconButton toggle"
@@ -316,57 +321,62 @@ exports[`sidebar shell snapshots > renders the expanded column (wordmark, capsul
     <div
       class="logoRow"
     >
-      <button
-        aria-label="New session"
-        class="brand wide"
-        type="button"
+      <div
+        data-slot="sidebar.brand.control"
+        style="display: contents;"
       >
-        <span
-          aria-hidden="true"
-          class="brandIdentity"
+        <button
+          aria-label="New session"
+          class="brand wide"
+          type="button"
         >
           <span
-            class="brandMark"
+            aria-hidden="true"
+            class="brandIdentity"
           >
-            <div
-              data-slot="sidebar.brand.mark"
-              style="display: contents;"
+            <span
+              class="brandMark"
             >
-              <svg
-                aria-hidden="true"
-                data-content="965fe321"
-                fill="none"
-                height="17.6580310880829"
-                viewBox="0 0 23.16 17.04"
-                width="24"
-              />
-            </div>
-          </span>
-          <span
-            class="brandName"
-          >
-            <div
-              data-slot="sidebar.brand.name"
-              style="display: contents;"
+              <div
+                data-slot="sidebar.brand.mark"
+                style="display: contents;"
+              >
+                <svg
+                  aria-hidden="true"
+                  data-content="965fe321"
+                  fill="none"
+                  height="17.6580310880829"
+                  viewBox="0 0 23.16 17.04"
+                  width="24"
+                />
+              </div>
+            </span>
+            <span
+              class="brandName"
             >
-              <span
-                class="localBuildBrand"
+              <div
+                data-slot="sidebar.brand.name"
+                style="display: contents;"
               >
                 <span
-                  class="localBuildTitle"
+                  class="localBuildBrand"
                 >
-                  DSH Local Build
+                  <span
+                    class="localBuildTitle"
+                  >
+                    DSH Local Build
+                  </span>
+                  <span
+                    class="buildVersion"
+                  >
+                    1.2.3-rc.4-abc1234-dirty
+                  </span>
                 </span>
-                <span
-                  class="buildVersion"
-                >
-                  1.2.3-rc.4-abc1234-dirty
-                </span>
-              </span>
-            </div>
+              </div>
+            </span>
           </span>
-        </span>
-      </button>
+        </button>
+      </div>
       <button
         aria-label="Collapse sidebar"
         class="iconButton toggle"
@@ -446,57 +456,62 @@ exports[`sidebar shell snapshots > renders the expanded column in the default lo
     <div
       class="logoRow"
     >
-      <button
-        aria-label="新建会话"
-        class="brand wide"
-        type="button"
+      <div
+        data-slot="sidebar.brand.control"
+        style="display: contents;"
       >
-        <span
-          aria-hidden="true"
-          class="brandIdentity"
+        <button
+          aria-label="新建会话"
+          class="brand wide"
+          type="button"
         >
           <span
-            class="brandMark"
+            aria-hidden="true"
+            class="brandIdentity"
           >
-            <div
-              data-slot="sidebar.brand.mark"
-              style="display: contents;"
+            <span
+              class="brandMark"
             >
-              <svg
-                aria-hidden="true"
-                data-content="965fe321"
-                fill="none"
-                height="17.6580310880829"
-                viewBox="0 0 23.16 17.04"
-                width="24"
-              />
-            </div>
-          </span>
-          <span
-            class="brandName"
-          >
-            <div
-              data-slot="sidebar.brand.name"
-              style="display: contents;"
+              <div
+                data-slot="sidebar.brand.mark"
+                style="display: contents;"
+              >
+                <svg
+                  aria-hidden="true"
+                  data-content="965fe321"
+                  fill="none"
+                  height="17.6580310880829"
+                  viewBox="0 0 23.16 17.04"
+                  width="24"
+                />
+              </div>
+            </span>
+            <span
+              class="brandName"
             >
-              <span
-                class="localBuildBrand"
+              <div
+                data-slot="sidebar.brand.name"
+                style="display: contents;"
               >
                 <span
-                  class="localBuildTitle"
+                  class="localBuildBrand"
                 >
-                  DSH 本地构建
+                  <span
+                    class="localBuildTitle"
+                  >
+                    DSH 本地构建
+                  </span>
+                  <span
+                    class="buildVersion"
+                  >
+                    1.2.3-rc.4-abc1234-dirty
+                  </span>
                 </span>
-                <span
-                  class="buildVersion"
-                >
-                  1.2.3-rc.4-abc1234-dirty
-                </span>
-              </span>
-            </div>
+              </div>
+            </span>
           </span>
-        </span>
-      </button>
+        </button>
+      </div>
       <button
         aria-label="收起侧边栏"
         class="iconButton toggle"

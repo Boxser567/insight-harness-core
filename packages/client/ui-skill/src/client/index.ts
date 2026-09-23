@@ -138,14 +138,15 @@ export function apply(ctx: ClientContext): void {
 
   const invalidate = (key: SessionId): void => {
     const entry = fetches.get(key)
-    if (entry === undefined) return
-    fetches.delete(key)
-    entry.abort.abort()
+    if (entry !== undefined) {
+      fetches.delete(key)
+      entry.abort.abort()
+    }
     notifyLexicon(key)
   }
 
   const clearAll = (): void => {
-    for (const key of [...fetches.keys()]) invalidate(key)
+    for (const key of new Set([...fetches.keys(), ...lexiconListeners.keys()])) invalidate(key)
   }
 
   // The bound translate resolves against the registered dictionaries with the
