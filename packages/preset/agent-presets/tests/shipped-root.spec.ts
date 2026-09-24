@@ -14,7 +14,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
-import Loader from '@deepseek-ai/cordis-plugin-loader'
+import Loader, { evaluate, isJsExpr } from '@deepseek-ai/cordis-plugin-loader'
 import Include, { entryListSchema } from '@deepseek-ai/cordis-plugin-include'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import * as yaml from 'js-yaml'
@@ -158,5 +158,28 @@ describe('the shipped preset root', () => {
       expect(findEntry(await shippedEntries(id), 'tool-ralph')?.disabled, id).toBe(true)
     }
     expect(findEntry(await shippedEntries('minimal'), 'tool-ralph')).toBeUndefined()
+  })
+
+  it('mounts only the packaged skill bundle in minimal desktop sessions', async () => {
+    const entries = await shippedEntries('minimal')
+    const filesystem = findEntry(entries, 'skill-filesystem')
+    const loader = findEntry(entries, 'tool-skill')
+    expect(isJsExpr(filesystem?.disabled)).toBe(true)
+    expect(isJsExpr(loader?.disabled)).toBe(true)
+
+    const generic = { process: { env: {} } }
+    expect(Boolean(evaluate(generic, (filesystem!.disabled as { __jsExpr: string }).__jsExpr))).toBe(true)
+    expect(Boolean(evaluate(generic, (loader!.disabled as { __jsExpr: string }).__jsExpr))).toBe(true)
+
+    const desktop = { process: { env: {
+      INSIGHT_DESKTOP_SERVICE_ENVIRONMENT: 'production',
+      DSH_BUNDLED_SKILL_DIR: '/desktop/bundled-skills',
+    } } }
+    expect(Boolean(evaluate(desktop, (filesystem!.disabled as { __jsExpr: string }).__jsExpr))).toBe(false)
+    expect(Boolean(evaluate(desktop, (loader!.disabled as { __jsExpr: string }).__jsExpr))).toBe(false)
+    expect(filesystem?.config).toMatchObject({ includeDefaultRoots: false })
+    const bundledSkillDir = (filesystem?.config as { bundledSkillDir?: unknown }).bundledSkillDir
+    expect(isJsExpr(bundledSkillDir)).toBe(true)
+    expect(evaluate(desktop, (bundledSkillDir as { __jsExpr: string }).__jsExpr)).toBe('/desktop/bundled-skills')
   })
 })

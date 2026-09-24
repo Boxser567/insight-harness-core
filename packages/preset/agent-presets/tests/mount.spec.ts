@@ -4,23 +4,25 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
-import Include from '@deepseek-ai/cordis-plugin-include'
+import Include, { entryListSchema } from '@deepseek-ai/cordis-plugin-include'
 import Group from '@deepseek-ai/cordis-plugin-group'
 import { PluginPackages } from '@deepseek-ai/dsh-app-boot'
 import LlmRuntime from '@deepseek-ai/dsh-llm'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
+import SkillRegistry from '@deepseek-ai/dsh-skill'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import AgentRegistry, { assembleContextFor, type Agent } from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AgentPresets, {
-  COMPOSITION_FILE, inactiveRows, leakedServices, livePresetMounts, mountPreset, serviceForAgent,
+  COMPOSITION_FILE, SHIPPED_PRESET_ROOT, inactiveRows, leakedServices, livePresetMounts, mountPreset, serviceForAgent,
 } from '@deepseek-ai/dsh-agent-presets'
 import type { Config } from '@deepseek-ai/dsh-agent-presets'
 import type {} from '@deepseek-ai/dsh-agent-presets/types'
 import { bindScopeParent, createScope, scopeOf } from '@deepseek-ai/dsh-scope'
+import * as yaml from 'js-yaml'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -100,6 +102,61 @@ beforeEach(async () => {
 })
 
 describe('composing an agent from a preset', () => {
+  it('gives Insight desktop minimal sessions the packaged skills and loader only', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dsh-preset-minimal-desktop-'))
+    roots.push(root)
+    const bundledSkillDir = join(root, 'bundled-skills')
+    const packaged = join(bundledSkillDir, 'packaged-skill')
+    const presetDir = join(root, 'minimal')
+    await mkdir(packaged, { recursive: true })
+    await mkdir(presetDir)
+    await writeFile(join(packaged, 'SKILL.md'), [
+      '---',
+      'name: packaged-skill',
+      'description: Packaged desktop skill.',
+      '---',
+      '',
+      'Use the packaged desktop skill.',
+      '',
+    ].join('\n'))
+    const source = await readFile(join(SHIPPED_PRESET_ROOT, 'minimal', COMPOSITION_FILE), 'utf8')
+    const entries = yaml.load(source, { schema: entryListSchema }) as Record<string, unknown>[]
+    const packagePaths = new Map([
+      ['skill-filesystem', join(process.cwd(), 'packages/skill/skill-filesystem/lib/index.js')],
+      ['tool-skill', join(process.cwd(), 'packages/skill/tool-skill/lib/index.js')],
+    ])
+    const skillEntries = entries
+      .filter(entry => packagePaths.has(String(entry.id)))
+      .map(entry => ({ ...entry, name: packagePaths.get(String(entry.id)) }))
+    await writeFile(join(presetDir, COMPOSITION_FILE), yaml.dump(skillEntries, { schema: entryListSchema }))
+    const previousBundledSkillDir = process.env.DSH_BUNDLED_SKILL_DIR
+    const previousDesktopEnvironment = process.env.INSIGHT_DESKTOP_SERVICE_ENVIRONMENT
+    process.env.DSH_BUNDLED_SKILL_DIR = bundledSkillDir
+    process.env.INSIGHT_DESKTOP_SERVICE_ENVIRONMENT = 'test'
+    const desktop = await harness({
+      default: 'minimal',
+      roots: [{ path: root, trust: 'system' }],
+      includeShippedRoot: false,
+      includeUserRoot: false,
+    })
+    try {
+      await desktop.plugin(SkillRegistry)
+      const agent = await agentOn(desktop, 'sess-minimal-desktop', 'minimal')
+
+      expect(toolNames(desktop, agent)).toEqual(['skill'])
+      const skills = await desktop.skills.list({ cwd: root, scope: agent })
+      expect(skills).toHaveLength(1)
+      expect(skills[0]).toMatchObject({ name: 'packaged-skill', source: 'bundled' })
+      expect(skills[0]?.path).toMatch(/[\\/]bundled-skills[\\/]packaged-skill[\\/]SKILL\.md$/u)
+    } finally {
+      await desktop.fiber.dispose()
+      if (previousBundledSkillDir === undefined) delete process.env.DSH_BUNDLED_SKILL_DIR
+      else process.env.DSH_BUNDLED_SKILL_DIR = previousBundledSkillDir
+      if (previousDesktopEnvironment === undefined) delete process.env.INSIGHT_DESKTOP_SERVICE_ENVIRONMENT
+      else process.env.INSIGHT_DESKTOP_SERVICE_ENVIRONMENT = previousDesktopEnvironment
+    }
+  })
+
   it('hands an absolute plugin path to Node as a file URL', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-preset-absolute-plugin-'))
     roots.push(root)
