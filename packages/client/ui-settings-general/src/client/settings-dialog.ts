@@ -8,7 +8,7 @@ export interface ISettingsDialog {
   open(sectionId?: string): void
 }
 
-/** Component actions connected for the lifetime of one settings shell mount. */
+/** Store actions connected for the lifetime of one registered settings shell. */
 export interface SettingsDialogActions {
   /**
    * Open the settings shell.
@@ -23,7 +23,7 @@ export class SettingsDialogController implements ISettingsDialog {
 
   /**
    * Attach the sole mounted settings shell.
-   * @param actions - Component-owned settings actions.
+   * @param actions - Settings owner store actions.
    * @returns An idempotent disposer that disconnects these actions.
    * @throws When another settings shell remains attached.
    */

@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-25-desktop-runtime-release-artifacts.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-25-desktop-runtime-release-artifacts.md
-2026-08-25-desktop-runtime-release-artifacts.md: 30cda71179dc4090715796919ff554b78277c957
-2026-08-25-desktop-runtime-release-artifacts.zh.md: cc3ede3fcf0282d984ac04ccdbba6105eb75f2d9
+/agent-note-desktop-runtime-release-artifacts:
+  en: f86b9a53b5aaa394
+  zh: 6350b7675e7b6f18
+/agent-note-desktop-runtime-release-artifacts/problem:
+  en: 379fef0c980e29bd
+  zh: ad3abd455593c905
+/agent-note-desktop-runtime-release-artifacts/decision:
+  en: ff88acb097ee039f
+  zh: f41ae46324cefd6a
+/agent-note-desktop-runtime-release-artifacts/consequences:
+  en: 2dbdfa96e0ca231c
+  zh: 5c28fb2c959469a6
+/agent-note-desktop-runtime-release-artifacts/alternatives-considered:
+  en: b4e9d17300f9804a
+  zh: 5876407e1fa5b48f

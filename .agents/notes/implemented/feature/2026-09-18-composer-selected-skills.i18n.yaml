@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-18-composer-selected-skills.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-09-18-composer-selected-skills.md
-2026-09-18-composer-selected-skills.md: 0d1af420d85a395eaaa681a6e89a06da9652896e
-2026-09-18-composer-selected-skills.zh.md: b66ac1336c696def241a104b20d3b30b59ff0f1c
+/agent-note-session-scoped-composer-skill-selection:
+  en: f7998ac3ca7c52be
+  zh: 0d0f6d3677fa47ef
+/agent-note-session-scoped-composer-skill-selection/problem:
+  en: 00db54bff25bd822
+  zh: 761440dc43c48cbf
+/agent-note-session-scoped-composer-skill-selection/decision:
+  en: 02c3b33ace76bfd8
+  zh: 38379b3affda9974
+/agent-note-session-scoped-composer-skill-selection/alternatives-considered:
+  en: e6ac7809f903529b
+  zh: f468b986d3dcf894
+/agent-note-session-scoped-composer-skill-selection/consequences:
+  en: 43537d356051c351
+  zh: a64593c97ffb2c86

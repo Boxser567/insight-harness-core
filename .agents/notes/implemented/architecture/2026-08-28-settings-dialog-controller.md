@@ -12,11 +12,11 @@ Client plugins can contribute settings sections, but only the settings trigger o
 
 `ui-settings-general` provides `ctx.settingsDialog` with `open(sectionId?)`. The service opens the existing settings shell and requests one registered section; a missing or unknown id uses the first current section. It controls presentation only and does not register, read, or mutate settings.
 
-`SettingsDialogController` owns no React state. `SettingsRoot` attaches its component action after mount and disconnects it on unmount. Calls outside that interval fail rather than queueing a request for a later or replacement mount, and a second concurrent shell owner is rejected.
+`SettingsDialogController` owns no React state. The settings slot registration connects the controller to the shared owner store and disconnects it on unregister. Calls outside that interval fail rather than queueing a request for a later or replacement mount, and a second concurrent shell owner is rejected.
 
 The Cordis service and the slot registration share the providing plugin's lifecycle. Plugin teardown removes the service; a later activation creates a fresh controller and shell connection.
 
-The shell combines the product-owned trigger with the Connection-owned recovery state. Dialog opening records the active element, including an account-menu action; closing restores it only while that element remains connected. A null trigger suppresses its empty row without unmounting the dialog service.
+The shell combines the product-owned `settings.launcher` with the Connection-owned recovery state. The shared modal owns focus restoration. A null launcher suppresses its empty row without unregistering the dialog service.
 
 ## Alternatives considered
 
@@ -30,4 +30,4 @@ The shell combines the product-owned trigger with the Connection-owned recovery 
 
 Client plugins have one product-independent action for opening Settings while the existing trigger, Escape handling, focus behavior, section ledger, and settings data ownership remain unchanged. The API deliberately has no close, toggle, or settings mutation methods; additional actions require a demonstrated cross-plugin use case rather than exposing component state wholesale.
 
-The explicit failure before mount exposes load-order or missing-shell defects immediately. Callers invoked by rendered UI naturally run after mount; code that can run earlier must wait for its own usable UI state instead of relying on deferred global actions.
+The explicit failure before slot registration exposes load-order or missing-shell defects immediately. Callers invoked by rendered UI naturally run after registration; code that can run earlier must wait for its own usable UI state instead of relying on deferred global actions.

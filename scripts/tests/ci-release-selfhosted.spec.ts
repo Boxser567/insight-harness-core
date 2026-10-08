@@ -35,7 +35,7 @@ function evaluate(expression: string, context: Record<string, string | boolean>)
   const source = expression.trim().replace(/^\$\{\{|\}\}$/g, '')
     .replace(/\b(?:github|vars|runner)(?:\.[a-zA-Z_][a-zA-Z_0-9]*)+/g,
       key => JSON.stringify(context[key] ?? ''))
-  return runInNewContext(source, { fromJSON: JSON.parse }, { timeout: 1000 }) as unknown
+  return runInNewContext(source, { fromJSON: JSON.parse }, { timeout: 1000 })
 }
 
 function assertSharedPersistentStore(run: string | undefined): void {
@@ -84,6 +84,24 @@ const fallbackCases: Array<[string, Record<string, string | boolean>]> = [
 for (const [file, jobIds] of [['release.yml', ['dependencies', 'pack']], ['release-vendor.yml', ['pack']]] as const) {
   describe(file, () => {
     const release = workflow(file)
+    // Insight's desktop fork rehearses npm releases manually on hosted runners.
+    // Automatic upstream rehearsal routing is not part of this fork's CI contract.
+    if (Object.keys(release.on).length === 1 && Object.hasOwn(release.on, 'workflow_dispatch')) {
+      it('keeps desktop-fork rehearsals manual, hosted and credential-free', () => {
+        expect(Object.keys(release.jobs)).toEqual(['pack'])
+        expect(release.permissions).toEqual({ contents: 'read' })
+        const job = release.jobs.pack!
+        const runner = job['runs-on'].startsWith('${{')
+          ? evaluate(job['runs-on'], { ...trustedPush, 'github.repository': 'Boxser567/insight-harness-core', 'github.event_name': 'workflow_dispatch' })
+          : job['runs-on']
+        expect(runner).toBe(hosted)
+        expect(JSON.stringify(job)).not.toMatch(/secrets\.|release:publish|npm-publish/)
+        expect(job.steps.find(step => step.name === 'Install (immutable)')?.run).toBe('pnpm install --frozen-lockfile')
+        const family = file === 'release.yml' ? 'dsh' : 'vendor'
+        expect(job.steps.some(step => step.run === 'pnpm run release:verify --family ' + family)).toBe(true)
+      })
+      return
+    }
     it('preserves the logical jobs, rehearsal events and read-only permission', () => {
       expect(Object.keys(release.jobs)).toEqual(jobIds)
       expect(release.on).toEqual({ pull_request: null, push: { branches: ['master'] }, workflow_dispatch: null })
@@ -161,6 +179,6 @@ for (const [file, jobIds] of [['release.yml', ['dependencies', 'pack']], ['relea
 
 it.each(['release-publish.yml', 'release-vendor-publish.yml'])('keeps %s manual and entirely hosted', (file) => {
   const publish = workflow(file)
-  expect(publish.on).toEqual({ workflow_dispatch: null })
+  expect(Object.keys(publish.on)).toEqual(['workflow_dispatch'])
   for (const job of Object.values(publish.jobs)) expect(job['runs-on']).toBe(hosted)
 })

@@ -1,6 +1,22 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-09-21-windows-windowless-job-target.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/proposed/bug-fix/2026-09-21-windows-windowless-job-target.md
-2026-09-21-windows-windowless-job-target.md: e14cde93f301739328b467453f41a9b231b64b9c
-2026-09-21-windows-windowless-job-target.zh.md: 097c2cb15f949c35229c9d34a922a18d5656385c
+/agent-note-windowless-ordinary-windows-job-targets:
+  en: c2f6843e45571bdd
+  zh: a95fc6a1d1059843
+/agent-note-windowless-ordinary-windows-job-targets/problem:
+  en: 876703cc121bd4b1
+  zh: 3ec1e1890ffc63de
+/agent-note-windowless-ordinary-windows-job-targets/proposal:
+  en: 30820ce4719e611f
+  zh: 05c8cf1a67032d07
+/agent-note-windowless-ordinary-windows-job-targets/alternatives-considered:
+  en: 175b1dc28cba827f
+  zh: d88bad38c8361e59
+/agent-note-windowless-ordinary-windows-job-targets/acceptance-criteria:
+  en: 6922fb1ebd04fe0a
+  zh: 2dcee3d6088e8a64
+/agent-note-windowless-ordinary-windows-job-targets/risks:
+  en: da6c20162936733e
+  zh: b19079bf7b1a7434

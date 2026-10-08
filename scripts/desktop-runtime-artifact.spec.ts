@@ -152,7 +152,7 @@ it('keeps workspace manifests unchanged when deploy uses hard links', async () =
 })
 
 
-it('materializes only recorded deploy packages misplaced under the selected importer', async () => {
+it.each([false, true])('materializes recorded importer packages with a pre-created peer directory=%s', async (peerDirectory) => {
   const workspace = await mkdtemp(join(tmpdir(), 'desktop-runtime-placement-'))
   temporaryDirectories.push(workspace)
   const output = join(workspace, 'out')
@@ -162,13 +162,14 @@ it('materializes only recorded deploy packages misplaced under the selected impo
   await mkdir(join(misplaced, 'node_modules'), { recursive: true })
   await symlink('/missing/workspace/dependency', join(misplaced, 'node_modules', 'broken-source-link'))
   await mkdir(join(output, 'node_modules'), { recursive: true })
+  if (peerDirectory) await mkdir(join(output, 'node_modules/@deepseek-ai/dsh/node_modules'), { recursive: true })
   await writeFile(join(output, 'node_modules/.modules.yaml'), JSON.stringify({ hoistedLocations: {
     dsh: ['runtime/desktop/node_modules/@deepseek-ai/dsh'],
     outside: ['../unrelated'],
   } }))
   await materializeDeployedProjectPackages(output, workspace)
   expect(await readFile(join(output, 'node_modules/@deepseek-ai/dsh/package.json'), 'utf8')).toBe('{"name":"@deepseek-ai/dsh"}')
-  await expect(lstat(join(output, 'node_modules/@deepseek-ai/dsh/node_modules'))).rejects.toMatchObject({ code: 'ENOENT' })
+  await expect(lstat(join(output, 'node_modules/@deepseek-ai/dsh/node_modules/broken-source-link'))).rejects.toMatchObject({ code: 'ENOENT' })
   await writeFile(join(output, 'node_modules/@deepseek-ai/dsh/package.json'), 'existing')
   await materializeDeployedProjectPackages(output, workspace)
   expect(await readFile(join(output, 'node_modules/@deepseek-ai/dsh/package.json'), 'utf8')).toBe('existing')

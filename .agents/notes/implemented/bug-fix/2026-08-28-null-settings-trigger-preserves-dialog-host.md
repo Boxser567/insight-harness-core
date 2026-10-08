@@ -10,7 +10,7 @@ The settings shell occupies the single `sidebar.settings` slot and owns both the
 
 ## Decision
 
-`SettingsRoot` remains the `sidebar.settings` registrant and delegates the complete trigger row to `settings.trigger`, including button chrome and the `openDialog` callback. The shipped `TriggerContent` registrant renders the standard button. A registrant that returns null suppresses the row without unmounting `SettingsRoot`, its dialog panel, onboarding coordination, or `SettingsDialogController` attachment. Deployments customize visibility through the public `settings.trigger` slot and leave the settings shell registered.
+`SettingsRoot` remains the `sidebar.settings` registrant and delegates the complete trigger row to `settings.launcher`, including the `openSettings` callback. Its fallback renders the standard button using `TriggerContent`. A registrant that returns null suppresses the row without unmounting `SettingsRoot`, its dialog panel, onboarding coordination, or `SettingsDialogController` attachment. Deployments customize visibility through the public `settings.launcher` slot and leave the settings shell registered.
 
 ## Alternatives considered
 
@@ -18,8 +18,8 @@ The settings shell occupies the single `sidebar.settings` slot and owns both the
 
 **Hide the trigger with CSS or DOM mutation.** Rejected because it depends on private markup and bypasses the slot lifecycle, making a layout-only preference depend on implementation details.
 
-**Split the dialog host into a separate root plugin.** Rejected because assigning complete row ownership to `settings.trigger` provides the required separation without adding another lifecycle owner or changing existing registration topology.
+**Split the dialog host into a separate root plugin.** Rejected because assigning complete row ownership to `settings.launcher` provides the required separation without adding another lifecycle owner or changing existing registration topology.
 
 ## Consequences
 
-Returning null from the active `settings.trigger` contribution has a defined presentation effect while the default registrant preserves the existing trigger behavior. Alternate settings entry points can hide the sidebar row and continue opening any registered section through `ctx.settingsDialog`. The settings-root and trigger-content client tests pin the absent row, the mounted dialog service, and the default button behavior.
+Returning null from the active `settings.launcher` contribution has a defined presentation effect while the default registrant preserves the existing trigger behavior. Alternate settings entry points can hide the sidebar row and continue opening any registered section through `ctx.settingsDialog`. The settings-root and assembled shell client tests pin the absent row, the mounted dialog service, and the default button behavior.

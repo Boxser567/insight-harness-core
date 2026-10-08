@@ -181,7 +181,9 @@ export async function materializeDeployedProjectPackages(output: string, workspa
       const suffix = relative(importerModules, source)
       if (!suffix || isAbsolute(suffix) || suffix === '..' || suffix.startsWith('../') || suffix.startsWith('..\\')) continue
       const destination = join(output, 'node_modules', suffix)
-      if (existsSync(destination)) continue
+      // Peer hoisting may create only a nested node_modules directory here.
+      // A package is materialized only when its manifest is present.
+      if (existsSync(join(destination, 'package.json'))) continue
       await mkdir(dirname(destination), { recursive: true })
       await cp(source, destination, {
         recursive: true,

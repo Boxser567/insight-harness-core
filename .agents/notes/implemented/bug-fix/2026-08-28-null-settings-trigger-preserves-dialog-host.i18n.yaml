@@ -1,6 +1,19 @@
-# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
-# side as of the last confirmed-consistent state. Both languages carry equal authority;
-# after editing either side, bring the other along and re-record with:
+# Bilingual-pair consistency record for 2026-08-28-null-settings-trigger-preserves-dialog-host.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-28-null-settings-trigger-preserves-dialog-host.md
-2026-08-28-null-settings-trigger-preserves-dialog-host.md: b39f8b03ab5c93cba23296340c66cdcd75f7fa25
-2026-08-28-null-settings-trigger-preserves-dialog-host.zh.md: 6384963ede5112796ddf5dc3d8561a9161d1a056
+/agent-note-null-settings-trigger-preserves-the-dialog-host:
+  en: f5e5643ea3d71df4
+  zh: aaffb050eea641e1
+/agent-note-null-settings-trigger-preserves-the-dialog-host/problem:
+  en: b8a94df8e2279388
+  zh: f652d11fe8489b8b
+/agent-note-null-settings-trigger-preserves-the-dialog-host/decision:
+  en: 20a55094255711d6
+  zh: c0539093e9ff3522
+/agent-note-null-settings-trigger-preserves-the-dialog-host/alternatives-considered:
+  en: 5a5a91b68930800d
+  zh: cfb7fb2e1b11d89d
+/agent-note-null-settings-trigger-preserves-the-dialog-host/consequences:
+  en: 26d78ba0d4e681b4
+  zh: 8466a6df25c0e56a
