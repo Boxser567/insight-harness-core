@@ -56,6 +56,15 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Package Runtime
         run: pnpm run runtime:package --target ${{ matrix.target }}
+      - name: Verify history compatibility
+        run: >-
+          pnpm exec vitest run
+          packages/session/session-format-v3-to-v4/tests
+          packages/session/session-persistence-jsonl/tests/migration-refusal.spec.ts
+          packages/client/ui-model-selection/tests
+          --coverage
+          --coverage.include=packages/session/session-format-v3-to-v4/src/failed-tool-step.ts
+          --coverage.include=packages/session/session-format-v3-to-v4/src/migration.ts
       - name: Collect validation artifacts
         uses: actions/upload-artifact@v4
         with:
