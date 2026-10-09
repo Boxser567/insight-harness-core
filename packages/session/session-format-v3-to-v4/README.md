@@ -66,7 +66,7 @@ Every restore creates independent Stage state. Compact runs expand as iterables 
 <a id="v3-to-v4-specification"></a>
 ## V3-to-V4 specification
 
-This edge changes only the named representations below, closes evidenced interrupted turns, and appends available missing catalog facts. It namespaces unknown ignorable event types and retains each admitted source event's time, message identities, and all fields outside those conversions and the coordinate remapping below. It creates no system prompt, developer event, tool execution, or replacement message. Earlier V0–V2 inputs first pass through their existing edges to V3; those edges retain their own transformations and refusal policies.
+This edge changes only the named representations below, closes evidenced interrupted turns, and appends available missing catalog facts. It namespaces unknown ignorable event types and retains each admitted source event's time, message identities, and all fields outside those conversions and the coordinate remapping below. It creates no system prompt, developer event, tool execution, or replacement of a recorded message. The scheduler-failure case below adds explicit error results for missing tool responses. Earlier V0–V2 inputs first pass through their existing edges to V3; those edges retain their own transformations and refusal policies.
 
 <a id="header-and-framing"></a>
 ### Header and physical framing
@@ -81,6 +81,8 @@ No preset id, PTC dispatch event tag, file attachment, or physical filename is r
 
 <a id="tool-results"></a>
 ### Tool-result representation
+
+A closed V3 step with unresolved advertised calls is repaired only when the immediately following `turn/end` names the same turn and records `UNKNOWN` with `Cannot read properties of undefined (reading 'prepare')`. At least one unresolved call must have a recorded `tool/call`. The migration adds error results before `step/end`: recorded starts receive `HISTORICAL_TOOL_RESULT_MISSING`, explicitly stating that execution outcome is unknown; calls without a recorded start receive the canonical `TOOL_NOT_STARTED` result. Existing results remain unchanged. Other failures, missing evidence, malformed relationships, and native V4 histories retain their existing refusal rules. [The decision](../../../.agents/notes/implemented/architecture/2026-10-09-historical-scheduler-failure.md) explains this limited compatibility repair.
 
 [liftToolResult](src/tool-role.ts) converts the message of a `tool/result` event whose source representation has role `user`. It requires a nonempty message id, source `{ kind: 'tool', callId }` with a nonempty call id, and exactly one `tool-result` block naming the same call. The block's content must be an array; an optional `isError` must be boolean.
 
@@ -316,11 +318,11 @@ The target restorer validates native fields and mandatory cross-event relationsh
 
 #### What the model sees
 
-Historical requests retain their recorded messages and model configuration. The [migration stage](src/migration.ts) represents `tool/result` payloads as tool-role messages without adding model-visible content; catalog records do not enter model messages directly, though later subagent listing can discover the historical children.
+Historical requests retain their recorded messages and model configuration. The [migration stage](src/migration.ts) represents existing `tool/result` payloads as tool-role messages. For the evidenced scheduler failure, continuation includes explicit error results stating missing execution outcomes or calls without recorded starts; catalog records do not enter model messages directly, though later subagent listing can discover the historical children.
 
 #### Token effect
 
-The conversion changes no request text or token-bearing data.
+Existing request text remains unchanged. The evidenced scheduler failure adds short error-result text to subsequent model requests.
 
 #### KV Cache effect
 

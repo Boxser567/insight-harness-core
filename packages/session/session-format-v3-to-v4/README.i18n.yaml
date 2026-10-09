@@ -18,14 +18,14 @@
   en: e3e7a08fb807c750
   zh: 9550a2094e203551
 /deepseek-ai-dsh-session-format-v3-to-v4/v3-to-v4-specification:
-  en: d3463f5e222c44a2
-  zh: ec932eb4acac30f4
+  en: 3328b30b2bcf4bd1
+  zh: 985e7b71ac4be158
 /deepseek-ai-dsh-session-format-v3-to-v4/v3-to-v4-specification/header-and-physical-framing:
   en: 69f24696bd941ceb
   zh: bc51ca330a4aa361
 /deepseek-ai-dsh-session-format-v3-to-v4/v3-to-v4-specification/tool-result-representation:
-  en: 32b845f1e1867195
-  zh: 3e4e046dbc36478e
+  en: 831c0e1b98c7244f
+  zh: d0fb28143a54c83d
 /deepseek-ai-dsh-session-format-v3-to-v4/v3-to-v4-specification/extension-data:
   en: 3e7af0248b029e9a
   zh: b73ddd133db65d05
@@ -75,11 +75,11 @@
   en: e63dd8ef6de7cf7c
   zh: f1e356f01b601079
 /deepseek-ai-dsh-session-format-v3-to-v4/model-experience/historical-restoration/what-the-model-sees:
-  en: 8885a0ae5f305b88
-  zh: 2064d2d02dd1b303
+  en: 144e2eeba5befa20
+  zh: db4559b41a7f9db5
 /deepseek-ai-dsh-session-format-v3-to-v4/model-experience/historical-restoration/token-effect:
-  en: adb2bef43125d1df
-  zh: 02f8d1d6a25d57ab
+  en: 84cfd7d6a2f396de
+  zh: e1849b6892fc238d
 /deepseek-ai-dsh-session-format-v3-to-v4/model-experience/historical-restoration/kv-cache-effect:
   en: 143ddba012e03d0c
   zh: 93dfdb806bf9a697

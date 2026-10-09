@@ -1,0 +1,19 @@
+# Bilingual-pair consistency record for 2026-10-09-historical-scheduler-failure.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-10-09-historical-scheduler-failure.md
+/agent-note-evidenced-historical-scheduler-failures:
+  en: 9b6e2518e4594604
+  zh: d8f5980d53b3e400
+/agent-note-evidenced-historical-scheduler-failures/problem:
+  en: 05d4963cbeb34b8b
+  zh: d297dc250784fb58
+/agent-note-evidenced-historical-scheduler-failures/decision:
+  en: 332d551b0ad41769
+  zh: 2ad12490e625c938
+/agent-note-evidenced-historical-scheduler-failures/alternatives-considered:
+  en: 19a69c7e1bc37e06
+  zh: df77a96fc510071d
+/agent-note-evidenced-historical-scheduler-failures/consequences:
+  en: 57689102d88d5b99
+  zh: 098e07fe0b84a635

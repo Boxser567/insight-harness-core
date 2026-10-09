@@ -1,7 +1,7 @@
 /** Durable EOF refusals preserve historical generations and never fall back from the selected generation. */
 
 import { Context } from '@deepseek-ai/cordis'
-import { SESSION_FORMAT_VERSION, SessionId } from '@deepseek-ai/dsh-session'
+import { SESSION_FORMAT_VERSION, SessionId, SessionSeq } from '@deepseek-ai/dsh-session'
 import { createSessionFormatCatalogWithChildren } from '@deepseek-ai/dsh-session-format-catalog'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import type { SessionFormatJsonObject } from '@deepseek-ai/dsh-session-format'
@@ -249,6 +249,35 @@ async function expectOnlyGenerations(paths: readonly string[]) {
 }
 
 describe.each(modes)('EOF migration refusal ($compression, $access)', ({ compression, access }) => {
+  it('publishes repaired scheduler-failure history only on write and supports subsequent turns', async () => {
+    const rows = releasedToolRows().filter(row => row['type'] !== 'tool/result').map(row => row['type'] === 'turn/end'
+      ? { ...row, data: { turn: 1, reason: { kind: 'error', error: { code: 'UNKNOWN', message: "Cannot read properties of undefined (reading 'prepare')" } } } } : row)
+    const path = await store(3, compression, rows)
+    const original = await observe(path)
+    const ctx = await mount(compression)
+    const handle = await ctx.sessionPersistence.open(id, access)
+    try {
+      const restored = await handle.read()
+      expect(restored.events).toHaveLength(rows.length + 1)
+      expect(restored.events.find(event => event.type === 'tool/result')?.data).toMatchObject({ error: { code: 'HISTORICAL_TOOL_RESULT_MISSING' }, message: { role: 'tool', isError: true } })
+      if (access === 'write') {
+        const seq = restored.events.length
+        await handle.append([
+          { type: 'turn/start', seq: SessionSeq(seq), time: 2000, data: { turn: 2 } },
+          { type: 'step/start', seq: SessionSeq(seq + 1), time: 2001, data: { turn: 2, step: 1 } },
+          { type: 'step/end', seq: SessionSeq(seq + 2), time: 2002, data: { turn: 2, step: 1 } },
+          { type: 'turn/end', seq: SessionSeq(seq + 3), time: 2003, data: { turn: 2, reason: { kind: 'completed' } } },
+        ])
+        await handle.flush()
+      }
+    } finally { await handle.close() }
+    const reopened = await ctx.sessionPersistence.open(id, 'read')
+    try { expect((await reopened.read()).events).toHaveLength(rows.length + (access === 'write' ? 5 : 1)) }
+    finally { await reopened.close() }
+    expect(await observe(path)).toEqual(original)
+    await expectOnlyGenerations(access === 'read' ? [path] : [path, generationLogPath(root, undefined, id, SESSION_FORMAT_VERSION, compression)])
+  })
+
   async function expectV3Conversion(
     rows: readonly SessionFormatJsonObject[], inspect: (events: readonly SessionEvent[]) => void,
   ) {

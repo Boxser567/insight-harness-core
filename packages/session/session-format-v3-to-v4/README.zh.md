@@ -66,7 +66,7 @@ const artifact = restore.finish()
 <a id="v3-to-v4-specification"></a>
 ## V3 到 V4 规范
 
-本边只改变下列明确命名的表示，补齐有明确证据的中断回合，并追加证据完整的缺失目录事实。未知可忽略事件的类型获得命名空间；每个获准源事件的 time、消息身份以及这些转换和下述坐标重映射之外的字段均保留。它不创建 system prompt、developer 事件、工具执行或替换消息。更早的 V0–V2 输入先经过各自现有迁移边到达 V3；那些边保留自身的转换与拒绝策略。
+本边只改变下列明确命名的表示，补齐有明确证据的中断回合，并追加证据完整的缺失目录事实。未知可忽略事件的类型获得命名空间；每个获准源事件的 time、消息身份以及这些转换和下述坐标重映射之外的字段均保留。它不创建 system prompt、developer 事件、工具执行，也不替换已记录的消息。下述调度器故障情形会为缺失的工具响应补入明确的错误结果。更早的 V0–V2 输入先经过各自现有迁移边到达 V3；那些边保留自身的转换与拒绝策略。
 
 <a id="header-and-framing"></a>
 ### Header 与物理分帧
@@ -81,6 +81,8 @@ const artifact = restore.finish()
 
 <a id="tool-results"></a>
 ### 工具结果表示
+
+只有当 V3 已关闭的 step 仍有未结算的已声明调用，且紧随其后的 `turn/end` 指向同一 turn，并记录 `UNKNOWN` 与 `Cannot read properties of undefined (reading 'prepare')` 时，迁移才补齐错误结果。至少一个未结算调用必须具有已记录的 `tool/call`。迁移在 `step/end` 前追加错误结果：已记录启动的调用获得 `HISTORICAL_TOOL_RESULT_MISSING`，明确说明执行结果未知；没有启动记录的调用获得 canonical `TOOL_NOT_STARTED` 结果。已有结果保持不变。其他故障、证据缺失、关系不合法及原生 V4 历史保留原有拒绝规则。[决策记录](../../../.agents/notes/implemented/architecture/2026-10-09-historical-scheduler-failure.zh.md)说明这项有限的兼容修复。
 
 [liftToolResult](src/tool-role.ts) 转换 `tool/result` 事件中源表示为 user 角色的消息。它要求非空消息 id、带非空 call id 的 `{ kind: 'tool', callId }` 来源，以及恰好一个引用同一调用的 `tool-result` block。该 block 的 content 必须为数组；可选 `isError` 必须为布尔值。
 
@@ -316,11 +318,11 @@ Fork 种子构造归核心 Session 所有，不属于此迁移。原生 V4 接�
 
 #### 模型看到什么
 
-历史请求保留记录的消息与模型配置。[迁移 Stage](src/migration.ts)将 `tool/result` 载荷表示为工具角色消息，不添加模型可见内容；目录记录不会直接进入模型消息，后续子代理列举可以发现历史子 Session。
+历史请求保留记录的消息与模型配置。[迁移 Stage](src/migration.ts)将已有的 `tool/result` 载荷表示为工具角色消息。对于有证据的调度器故障，继续对话时会包含明确的错误结果，说明执行结果缺失或调用没有启动记录；目录记录不会直接进入模型消息，后续子代理列举可以发现历史子 Session。
 
 #### Token 影响
 
-转换不改变请求文本或承载 token 的数据。
+已有请求文本保持不变。有证据的调度器故障会在后续模型请求中增加简短的错误结果文本。
 
 #### KV Cache 影响
 
