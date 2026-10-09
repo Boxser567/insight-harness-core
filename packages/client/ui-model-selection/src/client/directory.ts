@@ -5,6 +5,7 @@
  * selectModel call. A switch made in either entry updates this shared state.
  */
 import type { TrackProductEvent } from '@deepseek-ai/dsh-client-product-analytics/client'
+import type { SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
 import type {
   ModelCatalogFailure, ModelProviderGroup, ModelSelection, ModelSelectionProjection,
 } from '@deepseek-ai/dsh-api-session-controller/types'
@@ -46,6 +47,7 @@ export class ModelDirectory {
   private disposed = false
   private readonly unsubscribeCatalog: () => void
   private readonly unsubscribeSelection: () => void
+  private readonly unsubscribeSession: () => void
 
   /**
    * @param sessions - the session wire face (captured from the plugin's root connection).
@@ -53,6 +55,7 @@ export class ModelDirectory {
    * @param available - whether this session may use Agent-bound model RPCs.
    * @param catalog - Host-generation catalog shared by every Session.
    * @param projected - durable model selection projected from Session history.
+   * @param session - history-open lifecycle; failed history cannot supply a selection projection.
    * @param isBlank - whether this Session has no first message yet.
    * @param track - desktop-only callback after a successful user selection.
    */
@@ -62,11 +65,13 @@ export class ModelDirectory {
     private readonly available: () => boolean,
     private readonly catalog: ModelCatalogDirectory,
     private readonly projected: ObservableSnapshot<unknown>,
+    private readonly session: ObservableSnapshot<Pick<SessionSnapshot, 'openState' | 'openError'>>,
     private readonly isBlank: () => boolean,
     private readonly track?: TrackProductEvent,
   ) {
     this.unsubscribeCatalog = catalog.store.subscribe(() => { this.syncInputs() })
     this.unsubscribeSelection = projected.subscribe(() => { this.syncInputs() })
+    this.unsubscribeSession = session.subscribe(() => { this.syncInputs() })
     this.syncInputs()
   }
 
@@ -146,9 +151,14 @@ export class ModelDirectory {
     this.disposed = true
     this.unsubscribeSelection()
     this.unsubscribeCatalog()
+    this.unsubscribeSession()
   }
 
   private assertAvailable(): void {
+    const snapshot = this.session.getSnapshot()
+    if (snapshot.openState === 'error') {
+      throw new Error(snapshot.openError?.message ?? 'Session history failed to open')
+    }
     if (!this.available()) {
       throw new Error('model selection is unavailable for addressed subagent sessions')
     }
@@ -157,6 +167,15 @@ export class ModelDirectory {
   private syncInputs(): void {
     if (this.disposed) return
     const catalog = this.catalog.store.getSnapshot()
+    const session = this.session.getSnapshot()
+    if (session.openState === 'error') {
+      this.store.set({
+        current: null, routable: null, groups: [], failures: [],
+        status: 'error', pending: null,
+        error: session.openError?.message ?? 'Session history failed to open',
+      })
+      return
+    }
     const projected = modelSelectionProjection(this.projected.getSnapshot())
     const intended = projected?.next ?? catalog.value?.default
     const reasoning = intended === undefined ? undefined : this.catalog.reasoningFor(intended)

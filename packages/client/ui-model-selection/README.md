@@ -49,6 +49,8 @@ The composer replaces the model and effort text with the Models icon when the ex
 
 Catalog availability does not block sending with a saved selection; request execution reports missing credentials or unavailable models. Refreshes and refresh failures retain the last displayed selection and groups. A Host reset clears that display. Sign-out hides the account provider from the picker while preserving the saved provider/model ID and reasoning effort. Signing in restores the catalog name when that model is available again. Existing session logs remain unchanged.
 
+Session history failures show an unavailable model caption and the original error instead of remaining in loading state. Selection is unavailable until history opens successfully; reopening restores the shared directory.
+
 ### Selection failures
 
 When another writer owns the Session, model-selection failures tell the user to quit other running DSH instances and retry.

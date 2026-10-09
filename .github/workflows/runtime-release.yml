@@ -54,6 +54,17 @@ jobs:
           cache: pnpm
       - name: Install
         run: pnpm install --frozen-lockfile
+      - name: Build native system for history checks
+        run: pnpm run build:native-system
+      - name: Verify history compatibility
+        run: >-
+          pnpm exec vitest run
+          packages/session/session-format-v3-to-v4/tests
+          packages/session/session-persistence-jsonl/tests/migration-refusal.spec.ts
+          packages/client/ui-model-selection/tests
+          --coverage
+          --coverage.include=packages/session/session-format-v3-to-v4/src/failed-tool-step.ts
+          --coverage.include=packages/session/session-format-v3-to-v4/src/migration.ts
       - name: Package Runtime
         run: pnpm run runtime:package --target ${{ matrix.target }}
       - name: Collect validation artifacts

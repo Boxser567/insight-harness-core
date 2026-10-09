@@ -206,6 +206,16 @@ describe('ModelSelect reasoning effort', () => {
     })
   })
 
+  it('announces unavailable models after history fails instead of continuing to load', () => {
+    const directory = createSnapshotStore<ModelDirectoryState>(state({ current: null, routable: null, groups: [], status: 'error', error: 'history migration refused' }))
+    render(<ModelSelect locked={false} available directory={directory} load={vi.fn()} select={vi.fn()} t={t} />)
+    const trigger = screen.getByRole('button', { name: '模型暂不可用' })
+    expect(trigger.textContent).toMatchInlineSnapshot('"模型暂不可用"')
+    expect(screen.queryByText('正在加载模型…')).toBeNull()
+    fireEvent.click(trigger)
+    expect(screen.getByText('模型操作失败：history migration refused')).toBeTruthy()
+  })
+
   it.each([false, true])('announces rejected selections with ownership guidance only for held writers (%s)', async (sessionInUse) => {
     const groups = [{
       id: 'deepseek-official',

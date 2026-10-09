@@ -10,6 +10,7 @@ import { namespaceV3OpaqueEvent, RELEASED_V3_EVENT_TYPES } from './extension-ide
 import { assertReleasedV4Header, validateDeliveryAccepted } from './validation.ts'
 import { catalogFact, childCatalogSource, childCatalogFact, childCatalogSubject } from './facts.ts'
 import { remapV3References } from './references.ts'
+import { V3FailedToolStep } from './failed-tool-step.ts'
 
 /** Header-only migration declaration; body restoration requires explicit child evidence. */
 export const sessionFormatV3ToV4 = defineSessionFormatMigration({
@@ -51,6 +52,8 @@ class ReleasedV3ToV4Stage implements SessionFormatMigrationStage {
   private nextSeq = 0
   private time: number
   private foreignDeliverySeq: number | undefined
+  private readonly failedTools = new V3FailedToolStep()
+  private pendingStepEnd: SessionFormatEvent | undefined
 
   constructor(private readonly input: SessionFormatMigrationStageInput, children: readonly SessionFormatJsonValue[]) {
     this.candidates = children.map(childCatalogSource).sort((left, right) =>
@@ -63,7 +66,24 @@ class ReleasedV3ToV4Stage implements SessionFormatMigrationStage {
   }
 
   transformEvent(event: SessionFormatEvent, context: SessionFormatMigrationContext): void {
+    if (this.pendingStepEnd !== undefined) {
+      if (event.seq !== this.mapping.length + 1) throw new SessionFormatError('V3 source events must be dense')
+      for (const result of this.failedTools.repair(this.pendingStepEnd, event, this.nextSeq)) {
+        this.nextSeq += 1
+        context.emitEvent(result)
+      }
+      this.emitSourceEvent(this.pendingStepEnd, context)
+      this.pendingStepEnd = undefined
+    }
     if (event.seq !== this.mapping.length) throw new SessionFormatError('V3 source events must be dense')
+    if (event.type === 'step/end' && this.failedTools.unresolved) {
+      this.pendingStepEnd = event
+      return
+    }
+    this.emitSourceEvent(event, context)
+  }
+
+  private emitSourceEvent(event: SessionFormatEvent, context: SessionFormatMigrationContext): void {
     const interrupted = this.observeRestart(event)
     if (interrupted !== undefined) {
       context.emitEvent({ type: 'turn/end', seq: this.nextSeq++, time: event.time,
@@ -107,7 +127,9 @@ class ReleasedV3ToV4Stage implements SessionFormatMigrationStage {
       const converted = rewriteV3MessageSource(source, event.seq, message['role'])
       return converted === source ? message : { ...message, source: converted }
     })
-    context.emitEvent(migrateV3EventContent(liftToolResult(rewritten)))
+    const target = migrateV3EventContent(liftToolResult(rewritten))
+    this.failedTools.observe(target)
+    context.emitEvent(target)
   }
 
   transformRun(run: SessionFormatEventRun, context: SessionFormatMigrationContext): void {
@@ -135,6 +157,10 @@ class ReleasedV3ToV4Stage implements SessionFormatMigrationStage {
   }
 
   finish(context: SessionFormatMigrationContext): number {
+    if (this.pendingStepEnd !== undefined) {
+      this.emitSourceEvent(this.pendingStepEnd, context)
+      this.pendingStepEnd = undefined
+    }
     const cut = sessionFormatCount(this.cut, 'V3 inherited event count')
     const sourceCut = sessionFormatCount(this.sourceCut, 'V3 source inherited event count')
     // Catalog payloads belong to this Session only after the final inherited cut.

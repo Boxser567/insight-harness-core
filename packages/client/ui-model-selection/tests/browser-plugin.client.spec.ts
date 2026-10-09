@@ -10,7 +10,7 @@
  */
 import { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
-import { createScope } from '@deepseek-ai/dsh-api-session-controller/client'
+import { createScope, type SessionSnapshot } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
@@ -140,7 +140,8 @@ async function bench(locale: 'zh' | 'en' = 'zh') {
     sessionId: SessionId
     session: {
       sessionId: SessionId
-      getSnapshot: () => { blank: boolean }
+      getSnapshot: () => Pick<SessionSnapshot, 'blank' | 'openState' | 'openError'>
+      subscribe: (listener: () => void) => () => void
       projections: { faceOf: () => SnapshotStore<ModelSelectionProjection | undefined> }
     }
     ctx: Context
@@ -167,16 +168,19 @@ async function bench(locale: 'zh' | 'en' = 'zh') {
       next: null,
     })
     projections.set(id, projection)
+    const history = createSnapshotStore<Pick<SessionSnapshot, 'blank' | 'openState' | 'openError'>>({
+      blank, openState: 'open', openError: null,
+    })
     const binding = {
       sessionId: id,
-      session: { sessionId: id, getSnapshot: () => ({ blank }), projections: { faceOf: () => projection } },
+      session: { sessionId: id, getSnapshot: history.getSnapshot, subscribe: history.subscribe, projections: { faceOf: () => projection } },
       ctx: handle.ctx,
     }
     bindings.set(id, binding)
     handle.ctx.effect(() => () => {
       if (bindings.get(id) === binding) bindings.delete(id)
     })
-    return { ...handle, projection }
+    return { ...handle, projection, history }
   }
   return {
     ctx, fiber, mint, calls, remote, track,
@@ -204,6 +208,25 @@ async function bench(locale: 'zh' | 'en' = 'zh') {
 const projection = (id: string) => ({ sessionId: sid(id) })
 
 describe('ui-model-selection dual entry', () => {
+  it('propagates history failure to both entries and recovers after successful reopening', async () => {
+    const b = await bench()
+    const session = b.mint('failed-history')
+    const directory = b.ctx.modelDirectories.directoryFor(sid('failed-history'))
+    await directory.load()
+    session.projection.set(undefined)
+    session.history.set({ blank: false, openState: 'error', openError: new RemoteError('gateway/internal', 'history migration refused', {}) })
+    expect(directory.store.getSnapshot()).toMatchObject({ status: 'error', current: null, error: 'history migration refused', groups: [] })
+    await expect(directory.load()).rejects.toThrow('history migration refused')
+    await expect(directory.select({ provider: 'deepseek-official', model: 'deepseek-v4-flash' })).rejects.toThrow('history migration refused')
+    await expect(b.popup().options(projection('failed-history'), new AbortController().signal)).rejects.toThrow()
+    expect(b.calls.select).toBe(0)
+    session.history.set({ blank: false, openState: 'loading', openError: null })
+    expect(directory.store.getSnapshot().status).toBe('loading')
+    session.projection.set({ lastUsed: null, next: null })
+    session.history.set({ blank: false, openState: 'open', openError: null })
+    expect(directory.store.getSnapshot()).toMatchObject({ status: 'ready', error: null })
+    await b.ctx.fiber.dispose()
+  })
   it('carries writer contention to the model seat and localizes the command failure', async () => {
     const b = await bench()
     b.mint('owned')
