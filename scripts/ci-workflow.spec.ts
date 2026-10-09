@@ -14,6 +14,23 @@ const runnerPrivatePnpmDestination = /^\$\{\{ runner\.temp \}\}\/setup-pnpm-\$\{
 const nativeWindowsPnpmDestination = '${{ runner.temp }}/setup-pnpm-js-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}'
 
 describe('CI workflow', () => {
+  it('verifies historical sessions before Runtime deployment prunes development dependencies', () => {
+    const job = workflowJob(loadWorkflow('.github/workflows/runtime-release.yml'), 'package')
+    if (!Array.isArray(job.steps)) throw new TypeError('Runtime packaging job must define steps')
+    const steps = job.steps.filter(isRecord)
+    const install = steps.findIndex(step => step.name === 'Install')
+    const native = steps.findIndex(step => step.run === 'pnpm run build:native-system')
+    const verification = steps.findIndex(step => step.name === 'Verify history compatibility')
+    const packaging = steps.findIndex(step => step.name === 'Package Runtime')
+    const publication = steps.findIndex(step => step.name === 'Publish assets')
+    expect(install).toBeGreaterThanOrEqual(0)
+    expect(native).toBeGreaterThan(install)
+    expect(verification).toBeGreaterThan(native)
+    expect(packaging).toBeGreaterThan(verification)
+    expect(publication).toBeGreaterThan(packaging)
+    expect(steps[verification]).not.toHaveProperty('continue-on-error', true)
+  })
+
   it('prepares confinement before Node compatibility smokes', () => {
     const job = workflowJob(loadWorkflow('.github/workflows/ci.yml'), 'node-compat')
     if (!Array.isArray(job.steps)) throw new TypeError('Node compatibility job must define steps')
