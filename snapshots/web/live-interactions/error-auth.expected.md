@@ -11,7 +11,7 @@
 - status: Failed
 - button "Failed" [disabled]
 - status:
-  - text: This turn failedAPI key is invalid
+  - text: This turn failedModel authentication failed. Check your sign-in status or service access.
   - code: AUTH
 - textbox "Message or run a task, / commands, @ files or sessions"
 - button "Add files or run commands"

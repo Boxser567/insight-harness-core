@@ -1,7 +1,7 @@
 /** Recorded npm evidence stays intact while authored files and exact edits remain checked. */
 
 import { describe, expect, it } from 'vitest'
-import { exactEditState, isRescopeExcluded } from './rescope-vendor.ts'
+import { exactEditState, isRescopeExcluded, isRescopeGenericSkip } from './rescope-vendor.ts'
 
 const ANCHOR = '\n## Sync procedure'
 const INSERTED = `\n15. **rescope**: one log entry.\n${ANCHOR}`
@@ -19,6 +19,38 @@ describe('rescope file selection', () => {
     'packages/example/package.json',
   ])('keeps %s subject to upstream package-name checks', (file) => {
     expect(isRescopeExcluded(file)).toBe(false)
+  })
+})
+
+describe('rescope generic skips', () => {
+  it.each([
+    'apps/cli/tests/optional-bundle-transitions.e2e.ts',
+    'apps/web/tests/agent-preset-selection.e2e.ts',
+    'apps/web/tests/developer-tools-settings.e2e.ts',
+    'docs/subsystems/schedule.md',
+    'docs/subsystems/schedule.zh.md',
+    'docs/upgrade-guide/v0.2.0-rc.2/schedule-bundle-retired/guide.md',
+    'docs/upgrade-guide/v0.2.0-rc.2/schedule-bundle-retired/guide.zh.md',
+    'docs/upgrade-guide/v0.2.1-alpha.1/subagent-preset-composition/guide.md',
+    'docs/upgrade-guide/v0.2.1-alpha.1/subagent-preset-composition/guide.zh.md',
+    'docs/user/guide/schedule.md',
+    'docs/user/guide/schedule.zh.md',
+    'packages/bundle/web-app/cordis.patch.yml',
+    'packages/client/ui-agent-preset/src/client/CreatePluginMenuItem.tsx',
+    'packages/client/ui-agent-preset/tests/components.client.spec.tsx',
+    'packages/client/ui-agent-preset/tests/create-plugin-menu-item.client.spec.tsx',
+    'packages/client/ui-agent-preset/tests/section-store.client.spec.ts',
+    'packages/extensions/cordis-host-runner/tests/inspect-registry.spec.ts',
+    'snapshots/session/cordis-inspect-liveness/client-fixture.mjs',
+    'snapshots/session/cordis-inspect-timeout/client-fixture.mjs',
+  ])('keeps the cordis product identifier in %s', (file) => {
+    expect(isRescopeGenericSkip(file, 'cordis')).toBe(true)
+  })
+
+  it('keeps copied vendor directory names while checking package references elsewhere', () => {
+    expect(isRescopeGenericSkip('scripts/desktop-runtime-artifact.spec.ts', 'cosmokit')).toBe(true)
+    expect(isRescopeGenericSkip('scripts/desktop-runtime-artifact.spec.ts', 'schemastery')).toBe(true)
+    expect(isRescopeGenericSkip('packages/example/src/index.ts', 'cordis')).toBe(false)
   })
 })
 

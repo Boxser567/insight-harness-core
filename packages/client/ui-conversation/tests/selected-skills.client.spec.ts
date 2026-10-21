@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { Context } from '@deepseek-ai/cordis'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { describe, expect, it, vi } from 'vitest'
 import { SessionInputShell } from '../src/client/input/facade.ts'
 import { skillTokenSpans } from '../src/client/input/selected-skills.ts'
-import type { DraftAttachmentId, InputTriggerController, SubmitOutcome } from '../src/client/contract/input.ts'
+import type { DraftAttachmentId, InputTriggerController, PickOutcome, SubmitOutcome } from '../src/client/contract/input.ts'
 
 function fixture(sink = vi.fn(async (): Promise<SubmitOutcome> => ({ kind: 'success' })), inputTriggers?: () => InputTriggerController) {
   const shell = new SessionInputShell({ actx: new Context(), defaultSink: sink,
@@ -65,13 +66,18 @@ describe('visible draft skill shortcuts', () => {
     shell.dispose()
   })
   it('cannot change a draft during command adjudication and preserves the native command', async () => {
-    let resolve!: (value: undefined) => void
-    const controller = { adjudicate: () => new Promise<undefined>((r) => { resolve = r }), track: vi.fn(),
-      lexicon: { subscribe: () => () => {}, getSnapshot: () => new Map() } } as unknown as InputTriggerController
+    const pending = Promise.withResolvers<PickOutcome>()
+    const controller: InputTriggerController = {
+      launcher: createSnapshotStore<string | null>(null),
+      lexicon: createSnapshotStore<ReadonlyMap<'/' | '@', readonly string[]>>(new Map()),
+      track: vi.fn(), arbitrate: () => 'pass', onSpace: () => false,
+      serializeReference: async () => '', adjudicate: () => pending.promise,
+      resolveClaim: () => Promise.resolve(undefined), openReference: () => false, toggleSource: () => {},
+    }
     const { shell, sink } = fixture(undefined, () => controller)
     shell.setDraft('/unknown prompt'); shell.submit()
     shell.toggleSkill('skill-a')
-    resolve(undefined)
+    pending.resolve(undefined)
     await vi.waitFor(() => expect(sink).toHaveBeenCalledOnce())
     expect((sink.mock.calls[0] as unknown[])[0]).toBe('/unknown prompt')
     shell.dispose()
