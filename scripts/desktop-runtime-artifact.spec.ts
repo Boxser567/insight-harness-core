@@ -1,6 +1,7 @@
-import { link, lstat, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { link, lstat, mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { createRequire } from 'node:module'
 import { afterEach, describe, expect, it } from 'vitest'
 import { load as loadYaml } from 'js-yaml'
 import {
@@ -114,21 +115,29 @@ describe('desktop runtime artifact metadata', () => {
     )
   })
 
-  it('replaces deployed vendor workspace links and their nested dependencies with runtime files', async () => {
+  it.each([
+    ['schemastery', '@deepseek-ai/schemastery', 'Schema'],
+    ['hmr', '@deepseek-ai/cordis-plugin-hmr', 'Hmr'],
+  ])('copies %s without following cyclic workspace dependencies', async (directory, name, sourceText) => {
     const output = await mkdtemp(join(tmpdir(), 'desktop-runtime-artifact-'))
     temporaryDirectories.push(output)
-    const destination = join(output, 'node_modules', '@deepseek-ai', 'schemastery')
+    const destination = join(output, 'node_modules', name)
     await mkdir(join(destination, '..'), { recursive: true })
-    await symlink('/missing/vendor/schemastery', destination)
+    await symlink(`/missing/vendor/${directory}`, destination)
+    const dependency = join(output, 'node_modules', '@deepseek-ai', 'cosmokit')
+    await mkdir(dependency, { recursive: true })
+    await writeFile(join(dependency, 'package.json'), '{"name":"@deepseek-ai/cosmokit"}\n')
 
     await materializeVendoredPackages(output)
 
     expect(JSON.parse(await readFile(join(destination, 'package.json'), 'utf8'))).toMatchObject({
-      name: '@deepseek-ai/schemastery',
+      name,
     })
-    expect(await readFile(join(destination, 'src', 'index.ts'), 'utf8')).toContain('Schema')
-    expect((await lstat(join(destination, 'node_modules', '@deepseek-ai', 'cosmokit'))).isSymbolicLink()).toBe(false)
-    expect((await lstat(join(destination, 'node_modules', '@standard-schema', 'spec'))).isSymbolicLink()).toBe(false)
+    expect((await lstat(destination)).isSymbolicLink()).toBe(false)
+    expect(await readFile(join(destination, 'src', 'index.ts'), 'utf8')).toContain(sourceText)
+    await expect(lstat(join(destination, 'node_modules'))).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(createRequire(join(destination, 'package.json')).resolve('@deepseek-ai/cosmokit/package.json'))
+      .toBe(await realpath(join(dependency, 'package.json')))
   })
 })
 
