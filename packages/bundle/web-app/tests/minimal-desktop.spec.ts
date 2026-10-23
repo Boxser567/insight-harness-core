@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, it, onTestFinished, vi } from 'vitest'
+import { provideWorkingDirectoryFixture } from '@deepseek-ai/dsh-agent-loop-testkit'
 import { loadOverlayPatches } from '@deepseek-ai/dsh-app-boot'
 import AgentPreset from '@deepseek-ai/dsh-agent-preset'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
@@ -23,6 +24,7 @@ it.each([false, true])('mounts desktop-only packaged skills when desktop launch 
   vi.stubEnv('INSIGHT_DESKTOP_SERVICE_ENVIRONMENT', desktop ? 'test' : '')
   vi.stubEnv('DSH_BUNDLED_SKILL_DIR', bundle)
   const ctx = await harness()
+  provideWorkingDirectoryFixture(ctx, dir)
   onTestFinished(() => ctx.fiber.dispose())
   await ctx.plugin(SkillRegistry)
   ctx.loader.builtins.preset = AgentPreset

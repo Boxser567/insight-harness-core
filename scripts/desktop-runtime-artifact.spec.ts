@@ -1,6 +1,7 @@
 import { link, lstat, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { globSync } from 'node:fs'
+import { join, resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   addDesktopHmrFallback,
@@ -20,6 +21,21 @@ afterEach(async () => {
 })
 
 describe('desktop runtime artifact metadata', () => {
+  it('keeps the Runtime dependency root aligned with the current workspace and package manager', async () => {
+    const root = resolve(import.meta.dirname, '..')
+    const manifest = JSON.parse(await readFile(join(root, 'runtime/desktop/package.json'), 'utf8'))
+    const workspace = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
+    const names = new Set(await Promise.all(
+      [...globSync(['packages/*/*/package.json', 'vendor/*/package.json', 'apps/*/package.json'], { cwd: root })]
+        .map(async path => JSON.parse(await readFile(join(root, path), 'utf8')).name as string),
+    ))
+    expect(manifest.version).toBe(workspace.version)
+    expect(`pnpm@${manifest.dependencies.pnpm}`).toBe(workspace.packageManager)
+    for (const [name, version] of Object.entries(manifest.dependencies)) {
+      if (typeof version === 'string' && version.startsWith('workspace:')) expect(names.has(name), name).toBe(true)
+    }
+  })
+
   it('records a fixed Core identity and target', () => {
     expect(createDesktopRuntimeMetadata({
       repository: 'Boxser567/insight-harness-core',
