@@ -1,4 +1,4 @@
-import { link, lstat, mkdtemp, mkdir, readFile, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises'
+import { link, lstat, mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
@@ -7,7 +7,6 @@ import { load as loadYaml } from 'js-yaml'
 import {
   addDesktopHmrFallback,
   assertDesktopRuntimeLayout,
-  assertDesktopRuntimeLinks,
   assertDesktopRuntimePeers,
   createDesktopRuntimeMetadata,
   materializeVendoredPackages,
@@ -198,42 +197,4 @@ it.each([false, true])('materializes recorded importer packages with a pre-creat
   await writeFile(join(output, 'node_modules/@deepseek-ai/dsh/package.json'), 'existing')
   await materializeDeployedProjectPackages(output, workspace)
   expect(await readFile(join(output, 'node_modules/@deepseek-ai/dsh/package.json'), 'utf8')).toBe('existing')
-})
-
-it('exposes deployed workspace packages after relocation without linking to source', async () => {
-  const workspace = await mkdtemp(join(tmpdir(), 'desktop-runtime-alias-'))
-  temporaryDirectories.push(workspace)
-  const output = join(workspace, 'out')
-  const placement = 'out/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-llm-pi-ai'
-  await mkdir(join(workspace, placement), { recursive: true })
-  await writeFile(join(workspace, placement, 'package.json'), '{"name":"@deepseek-ai/dsh-llm-pi-ai"}')
-  await writeFile(join(output, 'node_modules/.modules.yaml'), JSON.stringify({ hoistedLocations: {
-    '@deepseek-ai/dsh-llm-pi-ai@file:packages/llm/llm-pi-ai(peer@1.0.0)': [placement],
-    '@deepseek-ai/source-only@file:packages/source-only': ['packages/source-only'],
-    'registry-package@1.0.0': [placement],
-  } }))
-  await materializeDeployedProjectPackages(output, workspace)
-  const moved = join(workspace, 'relocated')
-  await rename(output, moved)
-  const manifest = join(moved, 'node_modules/@deepseek-ai/dsh-llm-pi-ai/package.json')
-  expect(JSON.parse(await readFile(manifest, 'utf8'))).toEqual({ name: '@deepseek-ai/dsh-llm-pi-ai' })
-  await expect(lstat(join(moved, 'node_modules/@deepseek-ai/source-only'))).rejects.toMatchObject({ code: 'ENOENT' })
-  await expect(lstat(join(moved, 'node_modules/registry-package'))).rejects.toMatchObject({ code: 'ENOENT' })
-  await expect(assertDesktopRuntimeLinks(moved)).resolves.toBeUndefined()
-})
-
-it('rejects missing, external and absolute links before packaging', async () => {
-  const output = await mkdtemp(join(tmpdir(), 'desktop-runtime-links-'))
-  temporaryDirectories.push(output)
-  const runtime = join(output, 'runtime')
-  await mkdir(runtime)
-  const alias = join(runtime, 'alias')
-  await symlink('missing', alias)
-  await expect(assertDesktopRuntimeLinks(runtime)).rejects.toThrow('ENOENT')
-  await rm(alias)
-  await symlink('..', alias, 'dir')
-  await expect(assertDesktopRuntimeLinks(runtime)).rejects.toThrow('link escapes')
-  await rm(alias)
-  await symlink(runtime, alias, 'dir')
-  await expect(assertDesktopRuntimeLinks(runtime)).rejects.toThrow('absolute link')
 })

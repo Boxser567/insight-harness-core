@@ -1,8 +1,8 @@
 import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { existsSync } from 'node:fs'
-import { cp, lstat, mkdir, readdir, readFile, readlink, realpath, rename, rm, symlink, writeFile } from 'node:fs/promises'
-import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { cp, lstat, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 
 const root = resolve(import.meta.dirname, '..')
@@ -139,11 +139,11 @@ function runPnpm(args: string[]): Promise<void> {
   return run(command, args, shell)
 }
 
-async function packageVersion(path: string): Promise<string> {
+async function packageVersion(path: string, field: 'version' | 'packageManager'): Promise<string> {
   const value: unknown = JSON.parse(await readFile(path, 'utf8'))
   if (!value || typeof value !== 'object') throw new Error(`${path} is not a package manifest.`)
-  const fieldValue = (value as Record<string, unknown>).version
-  if (typeof fieldValue !== 'string' || fieldValue === '') throw new Error(`${path} has no version.`)
+  const fieldValue = (value as Record<string, unknown>)[field]
+  if (typeof fieldValue !== 'string' || fieldValue === '') throw new Error(`${path} has no ${field}.`)
   return fieldValue
 }
 
@@ -166,7 +166,6 @@ export async function addDesktopHmrFallback(output: string): Promise<void> {
  * pnpm 11 legacy hoisting records some peer contexts under the source importer
  * instead of honoring its redirected modulesDir. Only recorded deploy outputs
  * under runtime/desktop/node_modules may supply a missing target package.
- * Workspace aliases refer only to package placements inside the Runtime.
  * @param output - Completed legacy deploy directory.
  * @param workspaceRoot - Source workspace containing the selected importer.
  * @returns Resolution after misplaced packages are copied to the deploy root.
@@ -195,50 +194,6 @@ export async function materializeDeployedProjectPackages(output: string, workspa
       })
     }
   }
-  for (const [id, locations] of Object.entries(metadata.hoistedLocations ?? {})) {
-    const name = /^([^()]+)@file:/.exec(id)?.[1]
-    if (!name) continue
-    const alias = join(output, 'node_modules', name)
-    if (existsSync(join(alias, 'package.json'))) continue
-    for (const location of locations) {
-      const source = resolve(workspaceRoot, location)
-      const importerSuffix = relative(importerModules, source)
-      const deployed = isInside(importerModules, source)
-        ? join(output, 'node_modules', importerSuffix)
-        : source
-      if (!isInside(output, deployed) || !existsSync(join(deployed, 'package.json'))) continue
-      await mkdir(dirname(alias), { recursive: true })
-      await symlink(relative(dirname(alias), deployed), alias, 'dir')
-      break
-    }
-  }
-}
-
-function isInside(directory: string, path: string): boolean {
-  const suffix = relative(directory, path)
-  return !isAbsolute(suffix) && suffix !== '..' && !suffix.startsWith(`..${sep}`)
-}
-
-/**
- * Reject links that break when a Runtime leaves its build host.
- * @param directory - Assembled Runtime root.
- * @returns Resolution when every link resolves inside the Runtime.
- */
-export async function assertDesktopRuntimeLinks(directory: string): Promise<void> {
-  const root = await realpath(directory)
-  async function visit(path: string): Promise<void> {
-    for (const entry of await readdir(path, { withFileTypes: true })) {
-      const child = join(path, entry.name)
-      if (entry.isSymbolicLink()) {
-        if (isAbsolute(await readlink(child))) throw new Error(`desktop runtime has an absolute link: ${child}`)
-        const target = await realpath(child)
-        if (!isInside(root, target)) throw new Error(`desktop runtime link escapes its directory: ${child}`)
-      } else if (entry.isDirectory()) {
-        await visit(child)
-      }
-    }
-  }
-  await visit(root)
 }
 
 /**
@@ -303,30 +258,26 @@ async function main(): Promise<void> {
   await runPnpm([
     '--filter', DEPLOY_ROOT_PACKAGE, 'deploy', '--legacy', '--prod',
     '--config.node-linker=hoisted', '--config.auto-install-peers=false',
-    '--config.link-workspace-packages=true', '--config.hoist-workspace-packages=false',
-    '--config.allowUnusedPatches=true',
+    '--config.link-workspace-packages=true', '--config.allowUnusedPatches=true',
     '--child-concurrency=1', '--network-concurrency=1', output,
   ])
   await materializeDeployedProjectPackages(output)
   await materializeVendoredPackages(output)
   await addDesktopHmrFallback(output)
-  // The node package can leave an absolute install-time shim despite hoist exclusions.
-  if (target.platform !== 'win32') await rm(join(output, 'node_modules', '.bin', 'node'), { force: true })
-  const [version, pnpmVersion, commit] = await Promise.all([
-    packageVersion(join(root, 'package.json')),
-    packageVersion(join(output, 'node_modules', 'pnpm', 'package.json')),
+  const [version, packageManager, commit] = await Promise.all([
+    packageVersion(join(root, 'package.json'), 'version'),
+    packageVersion(join(root, 'package.json'), 'packageManager'),
     gitCommit(),
   ])
   const metadata = createDesktopRuntimeMetadata({
     repository: 'Boxser567/insight-harness-core',
     version,
     commit,
-    nodeVersion: await packageVersion(join(output, 'node_modules', 'node', 'package.json')),
-    pnpmVersion,
+    nodeVersion: await packageVersion(join(output, 'node_modules', 'node', 'package.json'), 'version'),
+    pnpmVersion: packageManager.replace(/^pnpm@/, ''),
     target,
   })
   await assertDesktopRuntimePeers(output)
-  await assertDesktopRuntimeLinks(output)
   assertDesktopRuntimeLayout(output, metadata)
   await writeDesktopRuntimeMetadata(join(output, 'runtime.json'), metadata)
   console.log(`desktop runtime assembled: ${output}`)
