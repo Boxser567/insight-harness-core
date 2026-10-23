@@ -17,6 +17,12 @@ packages:
   # npm release family never treats this private assembly manifest as publishable.
   - runtime/*
 
+# Runtime's Node must finish its preinstall before it can run any dependency scripts.
+# Keep it out of the shared lifecycle PATH; the Runtime still installs it directly.
+hoistPattern:
+  - '*'
+  - '!node'
+
 overrides:
   'extract-zip>yauzl': '3.4.0'
   '@deepseek-ai/cosmokit': 'link:vendor/cosmokit'
