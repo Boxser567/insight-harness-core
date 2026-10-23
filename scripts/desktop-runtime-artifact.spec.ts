@@ -2,6 +2,7 @@ import { link, lstat, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'n
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { load as loadYaml } from 'js-yaml'
 import {
   addDesktopHmrFallback,
   assertDesktopRuntimeLayout,
@@ -20,6 +21,20 @@ afterEach(async () => {
 })
 
 describe('desktop runtime artifact metadata', () => {
+  it('records complete lockfile entries for every Runtime registry dependency', async () => {
+    const lock = loadYaml(await readFile(new URL('../pnpm-lock.yaml', import.meta.url), 'utf8')) as {
+      importers: Record<string, { dependencies: Record<string, { version: string }> }>
+      packages: Record<string, object>
+      snapshots: Record<string, object>
+    }
+    for (const [name, dependency] of Object.entries(lock.importers['runtime/desktop']!.dependencies)) {
+      if (dependency.version.startsWith('link:')) continue
+      const key = `${name}@${dependency.version}`
+      expect(lock.packages[key], `${key} resolution`).toBeDefined()
+      expect(lock.snapshots[key], `${key} dependency snapshot`).toBeDefined()
+    }
+  })
+
   it('records a fixed Core identity and target', () => {
     expect(createDesktopRuntimeMetadata({
       repository: 'Boxser567/insight-harness-core',
