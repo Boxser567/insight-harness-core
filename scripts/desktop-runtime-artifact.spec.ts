@@ -1,16 +1,18 @@
-import { link, lstat, mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
+import { link, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { globSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { createRequire } from 'node:module'
+import { pathToFileURL } from 'node:url'
+import { load } from 'js-yaml'
 import { afterEach, describe, expect, it } from 'vitest'
+import { assertRuntimeLinks } from './verify-desktop-runtime.mjs'
 import {
   addDesktopHmrFallback,
+  approveDeployedSubprocessBuild,
+  assertDesktopRuntimeBuilds,
   assertDesktopRuntimeLayout,
   assertDesktopRuntimePeers,
   createDesktopRuntimeMetadata,
-  materializeVendoredPackages,
-  materializeDeployedProjectPackages,
   parseDesktopRuntimeTarget,
   pnpmInvocation,
 } from './desktop-runtime-artifact.ts'
@@ -115,33 +117,7 @@ describe('desktop runtime artifact metadata', () => {
       "export const name = 'dsh-desktop-hmr-fallback'",
     )
   })
-
-  it.each([
-    ['schemastery', '@deepseek-ai/schemastery', 'Schema'],
-    ['hmr', '@deepseek-ai/cordis-plugin-hmr', 'Hmr'],
-  ])('copies %s without following cyclic workspace dependencies', async (directory, name, sourceText) => {
-    const output = await mkdtemp(join(tmpdir(), 'desktop-runtime-artifact-'))
-    temporaryDirectories.push(output)
-    const destination = join(output, 'node_modules', name)
-    await mkdir(join(destination, '..'), { recursive: true })
-    await symlink(`/missing/vendor/${directory}`, destination)
-    const dependency = join(output, 'node_modules', '@deepseek-ai', 'cosmokit')
-    await mkdir(dependency, { recursive: true })
-    await writeFile(join(dependency, 'package.json'), '{"name":"@deepseek-ai/cosmokit"}\n')
-
-    await materializeVendoredPackages(output)
-
-    expect(JSON.parse(await readFile(join(destination, 'package.json'), 'utf8'))).toMatchObject({
-      name,
-    })
-    expect((await lstat(destination)).isSymbolicLink()).toBe(false)
-    expect(await readFile(join(destination, 'src', 'index.ts'), 'utf8')).toContain(sourceText)
-    await expect(lstat(join(destination, 'node_modules'))).rejects.toMatchObject({ code: 'ENOENT' })
-    expect(createRequire(join(destination, 'package.json')).resolve('@deepseek-ai/cosmokit/package.json'))
-      .toBe(await realpath(join(dependency, 'package.json')))
-  })
 })
-
 
 it('rejects a deploy missing required peers while permitting absent optional peers', async () => {
   const output = await mkdtemp(join(tmpdir(), 'desktop-runtime-peers-'))
@@ -160,7 +136,6 @@ it('rejects a deploy missing required peers while permitting absent optional pee
   await expect(assertDesktopRuntimePeers(output)).resolves.toBeUndefined()
 })
 
-
 it('keeps workspace manifests unchanged when deploy uses hard links', async () => {
   const output = await mkdtemp(join(tmpdir(), 'desktop-runtime-hardlink-'))
   temporaryDirectories.push(output)
@@ -176,26 +151,44 @@ it('keeps workspace manifests unchanged when deploy uses hard links', async () =
   expect(patched.dependencies['dsh-desktop-hmr-fallback']).toBe('0.1.0')
 })
 
+it('rejects broken or external workspace links while accepting contained links', async () => {
+  const output = await mkdtemp(join(tmpdir(), 'desktop-runtime-relocation-'))
+  temporaryDirectories.push(output)
+  const runtime = join(output, 'runtime')
+  await mkdir(runtime)
+  await writeFile(join(runtime, 'package.json'), '{}')
+  await symlink('package.json', join(runtime, 'contained'))
+  await expect(assertRuntimeLinks(runtime)).resolves.toBeUndefined()
+  await writeFile(join(output, 'source.json'), '{}')
+  await symlink('../source.json', join(runtime, 'external'))
+  await expect(assertRuntimeLinks(runtime)).rejects.toThrow('link escapes archive')
+  await rm(join(runtime, 'external'))
+  await symlink('../missing.json', join(runtime, 'broken'))
+  await expect(assertRuntimeLinks(runtime)).rejects.toMatchObject({ code: 'ENOENT' })
+})
 
-it.each([false, true])('materializes recorded importer packages with a pre-created peer directory=%s', async (peerDirectory) => {
-  const workspace = await mkdtemp(join(tmpdir(), 'desktop-runtime-placement-'))
-  temporaryDirectories.push(workspace)
-  const output = join(workspace, 'out')
-  const misplaced = join(workspace, 'runtime/desktop/node_modules/@deepseek-ai/dsh')
-  await mkdir(misplaced, { recursive: true })
-  await writeFile(join(misplaced, 'package.json'), '{"name":"@deepseek-ai/dsh"}')
-  await mkdir(join(misplaced, 'node_modules'), { recursive: true })
-  await symlink('/missing/workspace/dependency', join(misplaced, 'node_modules', 'broken-source-link'))
-  await mkdir(join(output, 'node_modules'), { recursive: true })
-  if (peerDirectory) await mkdir(join(output, 'node_modules/@deepseek-ai/dsh/node_modules'), { recursive: true })
-  await writeFile(join(output, 'node_modules/.modules.yaml'), JSON.stringify({ hoistedLocations: {
-    dsh: ['runtime/desktop/node_modules/@deepseek-ai/dsh'],
-    outside: ['../unrelated'],
-  } }))
-  await materializeDeployedProjectPackages(output, workspace)
-  expect(await readFile(join(output, 'node_modules/@deepseek-ai/dsh/package.json'), 'utf8')).toBe('{"name":"@deepseek-ai/dsh"}')
-  await expect(lstat(join(output, 'node_modules/@deepseek-ai/dsh/node_modules/broken-source-link'))).rejects.toMatchObject({ code: 'ENOENT' })
-  await writeFile(join(output, 'node_modules/@deepseek-ai/dsh/package.json'), 'existing')
-  await materializeDeployedProjectPackages(output, workspace)
-  expect(await readFile(join(output, 'node_modules/@deepseek-ai/dsh/package.json'), 'utf8')).toBe('existing')
+it('keeps build approvals limited to the reviewed deployed subprocess script', async () => {
+  const output = await mkdtemp(join(tmpdir(), 'desktop-runtime-build-policy-'))
+  temporaryDirectories.push(output)
+  const path = join(output, 'pnpm-workspace.yaml')
+  await writeFile(path, 'allowBuilds:\n  unreviewed: false\n')
+  await expect(approveDeployedSubprocessBuild(output)).rejects.toThrow('not approved')
+  await writeFile(path, 'allowBuilds:\n  "@deepseek-ai/dsh-subprocess-local@file:packages/subprocess/subprocess-local": true\n  node: true\n  unreviewed: false\n')
+  await approveDeployedSubprocessBuild(output)
+  const settings = load(await readFile(path, 'utf8')) as { allowBuilds: Record<string, boolean> }
+  expect(settings.allowBuilds.node).toBe(true)
+  expect(settings.allowBuilds.unreviewed).toBe(false)
+  expect(Object.keys(settings.allowBuilds).filter(key => key.includes('subprocess-local')))
+    .toEqual([`@deepseek-ai/dsh-subprocess-local@${pathToFileURL(resolve(import.meta.dirname, '../packages/subprocess/subprocess-local')).href}`])
+})
+
+it('fails packaging when a new dependency build has not been reviewed', async () => {
+  const output = await mkdtemp(join(tmpdir(), 'desktop-runtime-unapproved-build-'))
+  temporaryDirectories.push(output)
+  await mkdir(join(output, 'node_modules'))
+  const path = join(output, 'node_modules/.modules.yaml')
+  await writeFile(path, 'ignoredBuilds: [unreviewed@1.0.0]\n')
+  await expect(assertDesktopRuntimeBuilds(output)).rejects.toThrow('unreviewed@1.0.0')
+  await writeFile(path, 'ignoredBuilds: []\n')
+  await expect(assertDesktopRuntimeBuilds(output)).resolves.toBeUndefined()
 })

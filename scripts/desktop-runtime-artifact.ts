@@ -1,9 +1,11 @@
 import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { existsSync } from 'node:fs'
-import { cp, lstat, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
+import { cp, mkdir, readdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises'
+import { dirname, join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
+import { pathToFileURL } from 'node:url'
+import { dump, load } from 'js-yaml'
 
 const root = resolve(import.meta.dirname, '..')
 const DEPLOY_ROOT_PACKAGE = '@deepseek-ai/insight-harness-desktop-runtime'
@@ -139,6 +141,31 @@ function runPnpm(args: string[]): Promise<void> {
   return run(command, args, shell)
 }
 
+/**
+ * Approve the same reviewed workspace postinstall under deploy's file URL identity.
+ * @param output - Deployed Runtime root.
+ * @returns Completion after updating only the reviewed script's approval.
+ */
+export async function approveDeployedSubprocessBuild(output: string): Promise<void> {
+  const path = join(output, 'pnpm-workspace.yaml')
+  const settings = load(await readFile(path, 'utf8')) as { allowBuilds?: Record<string, boolean> }
+  const source = '@deepseek-ai/dsh-subprocess-local@file:packages/subprocess/subprocess-local'
+  if (settings.allowBuilds?.[source] !== true) throw new Error('desktop runtime subprocess postinstall is not approved.')
+  delete settings.allowBuilds['@deepseek-ai/dsh-subprocess-local@file:packages/subprocess/subprocess-local']
+  settings.allowBuilds[`@deepseek-ai/dsh-subprocess-local@${pathToFileURL(join(root, 'packages/subprocess/subprocess-local')).href}`] = true
+  await writeFile(path, dump(settings), 'utf8')
+}
+
+/**
+ * Reject any dependency lifecycle script that rebuild left without an approval.
+ * @param output - Deployed Runtime root.
+ * @returns Completion after the strict build policy has been checked.
+ */
+export async function assertDesktopRuntimeBuilds(output: string): Promise<void> {
+  const state = load(await readFile(join(output, 'node_modules/.modules.yaml'), 'utf8')) as { ignoredBuilds?: string[] }
+  if (state.ignoredBuilds?.length) throw new Error(`desktop runtime has unapproved builds: ${state.ignoredBuilds.join(', ')}`)
+}
+
 async function packageVersion(path: string, field: 'version' | 'packageManager'): Promise<string> {
   const value: unknown = JSON.parse(await readFile(path, 'utf8'))
   if (!value || typeof value !== 'object') throw new Error(`${path} is not a package manifest.`)
@@ -159,70 +186,6 @@ export async function addDesktopHmrFallback(output: string): Promise<void> {
   const stagingPath = `${dshPackagePath}.desktop-tmp`
   await writeFile(stagingPath, `${JSON.stringify(dshPackage, null, 2)}\n`, 'utf8')
   await rename(stagingPath, dshPackagePath)
-}
-
-/**
- * Copy the selected importer's package placements into the portable Runtime.
- * pnpm 11 legacy hoisting records some peer contexts under the source importer
- * instead of honoring its redirected modulesDir. Only recorded deploy outputs
- * under runtime/desktop/node_modules may supply a missing target package.
- * @param output - Completed legacy deploy directory.
- * @param workspaceRoot - Source workspace containing the selected importer.
- * @returns Resolution after misplaced packages are copied to the deploy root.
- */
-export async function materializeDeployedProjectPackages(output: string, workspaceRoot = root): Promise<void> {
-  const metadata = JSON.parse(await readFile(join(output, 'node_modules', '.modules.yaml'), 'utf8')) as {
-    hoistedLocations?: Record<string, string[]>
-  }
-  const importerModules = join(workspaceRoot, 'runtime', 'desktop', 'node_modules')
-  for (const locations of Object.values(metadata.hoistedLocations ?? {})) {
-    for (const location of locations) {
-      const source = resolve(workspaceRoot, location)
-      const suffix = relative(importerModules, source)
-      if (!suffix || isAbsolute(suffix) || suffix === '..' || suffix.startsWith('../') || suffix.startsWith('..\\')) continue
-      const destination = join(output, 'node_modules', suffix)
-      // Peer hoisting may create only a nested node_modules directory here.
-      // A package is materialized only when its manifest is present.
-      if (existsSync(join(destination, 'package.json'))) continue
-      await mkdir(dirname(destination), { recursive: true })
-      await cp(source, destination, {
-        recursive: true,
-        dereference: true,
-        // Source workspace links are relative to their original package location.
-        // Runtime dependencies resolve through the deployed hoisted modules instead.
-        filter: path => path !== join(source, 'node_modules'),
-      })
-    }
-  }
-}
-
-/**
- * Replace vendor links with package files; dependencies resolve from the deployed modules.
- * @param output - Completed legacy deploy directory.
- * @returns Resolution after deployed vendor links are replaced.
- */
-export async function materializeVendoredPackages(output: string): Promise<void> {
-  const vendorRoot = join(root, 'vendor')
-  for (const entry of await readdir(vendorRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue
-    const source = join(vendorRoot, entry.name)
-    const manifest = JSON.parse(await readFile(join(source, 'package.json'), 'utf8')) as { name: string }
-    const destination = join(output, 'node_modules', manifest.name)
-    let destinationStat
-    try {
-      destinationStat = await lstat(destination)
-    } catch {
-      continue
-    }
-    if (!destinationStat.isSymbolicLink()) continue
-    await rm(destination, { recursive: true, force: true })
-    await cp(source, destination, {
-      recursive: true,
-      dereference: true,
-      // Workspace dependency links can cycle; deploy already owns the dependency tree.
-      filter: path => path !== join(source, 'node_modules'),
-    })
-  }
 }
 
 async function gitCommit(): Promise<string> {
@@ -256,13 +219,19 @@ async function main(): Promise<void> {
   if (!values['skip-build']) await runPnpm(['run', 'build:official'])
   await rm(output, { recursive: true, force: true })
   await runPnpm([
-    '--filter', DEPLOY_ROOT_PACKAGE, 'deploy', '--legacy', '--prod',
-    '--config.node-linker=hoisted', '--config.auto-install-peers=false',
-    '--config.link-workspace-packages=true', '--config.allowUnusedPatches=true',
+    '--filter', DEPLOY_ROOT_PACKAGE, 'deploy', '--prod', '--ignore-scripts',
+    '--config.node-linker=hoisted', '--config.allowUnusedPatches=true',
     '--child-concurrency=1', '--network-concurrency=1', output,
   ])
-  await materializeDeployedProjectPackages(output)
-  await materializeVendoredPackages(output)
+  await approveDeployedSubprocessBuild(output)
+  await runPnpm(['--dir', output, '--config.node-linker=hoisted', 'rebuild'])
+  await assertDesktopRuntimeBuilds(output)
+  if (target.platform !== 'win32') {
+    // node-bin-setup creates an absolute shim that cannot survive relocation.
+    const shim = join(output, 'node_modules/.bin/node')
+    await rm(shim, { force: true })
+    await symlink('../node/bin/node', shim)
+  }
   await addDesktopHmrFallback(output)
   const [version, packageManager, commit] = await Promise.all([
     packageVersion(join(root, 'package.json'), 'version'),

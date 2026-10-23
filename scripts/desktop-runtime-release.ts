@@ -2,7 +2,8 @@
 
 import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { parseDesktopRuntimeTarget } from './desktop-runtime-artifact.ts'
@@ -29,9 +30,9 @@ export async function sha256(path: string): Promise<string> {
   return createHash('sha256').update(await readFile(path)).digest('hex')
 }
 
-function run(command: string, args: string[]): Promise<void> {
+function run(command: string, args: string[], cwd = root, env = process.env): Promise<void> {
   return new Promise((resolvePromise, reject) => {
-    const child = spawn(command, args, { cwd: root, stdio: 'inherit', windowsHide: true })
+    const child = spawn(command, args, { cwd, env, stdio: 'inherit', windowsHide: true })
     child.once('error', reject)
     child.once('exit', (code) => {
       if (code === 0) resolvePromise()
@@ -72,6 +73,19 @@ async function main(): Promise<void> {
   const filename = desktopRuntimeArchiveName(await runtimeVersion(runtimeDirectory), targetName)
   const archive = join(destination, filename)
   await run('tar', ['-czf', archive, '-C', runtimeDirectory, '.'])
+  const extracted = await mkdtemp(join(tmpdir(), 'desktop-runtime-release-'))
+  try {
+    await run('tar', ['-xzf', archive, '-C', extracted])
+    // Source hooks can hide broken workspace links; use only the archived Node.
+    const env = { ...process.env }
+    delete env.NODE_OPTIONS
+    delete env.NODE_PATH
+    delete env.TSX_TSCONFIG_PATH
+    await run(join(extracted, 'node_modules/node/bin', target.platform === 'win32' ? 'node.exe' : 'node'),
+      [join(root, 'scripts/verify-desktop-runtime.mjs'), extracted], extracted, env)
+  } finally {
+    await rm(extracted, { recursive: true, force: true })
+  }
   const digest = await sha256(archive)
   await writeFile(join(destination, `${filename}.sha256`), desktopRuntimeChecksumLine(filename, digest), 'utf8')
   await writeFile(join(destination, `${filename}.json`), await readFile(join(runtimeDirectory, 'runtime.json')))
