@@ -15988,18 +15988,18 @@ importers:
       '@deepseek-ai/dsh-deepseek-account':
         specifier: workspace:^
         version: link:../../packages/credentials/deepseek-account
-      '@deepseek-ai/dsh-llm-deepseek':
-        specifier: workspace:^
-        version: link:../../packages/llm/llm-deepseek
       '@deepseek-ai/dsh-fs':
         specifier: workspace:^
         version: link:../../packages/fs/fs
       '@deepseek-ai/dsh-hook-protocol':
         specifier: workspace:^
-        version: link:../../packages/hooks/hook-protocol
+        version: link:../../packages/experimental/hook-protocol
       '@deepseek-ai/dsh-jobs':
         specifier: workspace:^
         version: link:../../packages/jobs/jobs
+      '@deepseek-ai/dsh-llm-deepseek':
+        specifier: workspace:^
+        version: link:../../packages/llm/llm-deepseek
       '@deepseek-ai/dsh-output-retention':
         specifier: workspace:^
         version: link:../../packages/util/output-retention
@@ -16036,9 +16036,6 @@ importers:
       '@deepseek-ai/dsh-spill':
         specifier: workspace:^
         version: link:../../packages/spill/spill
-      '@deepseek-ai/dsh-subagent-in-process-driver':
-        specifier: workspace:^
-        version: link:../../packages/subagent/subagent-in-process-driver
       '@deepseek-ai/dsh-subprocess':
         specifier: workspace:^
         version: link:../../packages/subprocess/subprocess
@@ -22097,6 +22094,9 @@ packages:
   node-api-version@0.2.1:
     resolution: {integrity: sha512-2xP/IGGMmmSQpI1+O/k72jF/ykvZ89JeuKX3TLJAYPDVLUalrshrLHkeVcCCZqG/eEa635cr8IBYzgnDvM2O8Q==}
 
+  node-bin-setup@1.1.4:
+    resolution: {integrity: sha512-vWNHOne0ZUavArqPP5LJta50+S8R261Fr5SvGul37HbEDcowvLjwdvd0ZeSr0r2lTSrPxl6okq9QUw8BFGiAxA==}
+
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
     engines: {node: '>=10.5.0'}
@@ -22133,6 +22133,11 @@ packages:
   node-releases@2.0.51:
     resolution: {integrity: sha512-wRNIrw4DmVLKQlbgOMdkMx27Wrpzes2hh5Jtbi2bjPd+4wJstWIqP5A+lscnqbm0xxmT5Bpg8Lec5ItEBwx6BQ==}
     engines: {node: '>=18'}
+
+  node@24.9.0:
+    resolution: {integrity: sha512-cczSuf6uJejZ+dR+BAUEd6t2TxW31GvSexzEEvUKKRT59E/oYxUk3fixnUUqMG4tCtjg2wpZp3hfPdGuSg4pgw==}
+    engines: {npm: '>=5.0.0'}
+    hasBin: true
 
   non-layered-tidy-tree-layout@2.0.2:
     resolution: {integrity: sha512-gkXMxRzUH+PB0ax9dUN0yYF0S25BqeAYqhgMaLUFmpXLEk7Fcu8f4emJuOAY0V8kjDICxROIKsTAKsV/v355xw==}
@@ -23822,14 +23827,6 @@ packages:
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
-
-  node-bin-setup@1.1.4:
-    resolution: {integrity: sha512-vWNHOne0ZUavArqPP5LJta50+S8R261Fr5SvGul37HbEDcowvLjwdvd0ZeSr0r2lTSrPxl6okq9QUw8BFGiAxA==}
-
-  node@24.9.0:
-    resolution: {integrity: sha512-cczSuf6uJejZ+dR+BAUEd6t2TxW31GvSexzEEvUKKRT59E/oYxUk3fixnUUqMG4tCtjg2wpZp3hfPdGuSg4pgw==}
-    engines: {npm: '>=5.0.0'}
-    hasBin: true
 
 snapshots:
 
@@ -29854,6 +29851,8 @@ snapshots:
     dependencies:
       semver: 7.8.5
 
+  node-bin-setup@1.1.4: {}
+
   node-domexception@1.0.0: {}
 
   node-fetch@2.7.0:
@@ -29888,6 +29887,10 @@ snapshots:
       node-addon-api: 7.1.1
 
   node-releases@2.0.51: {}
+
+  node@24.9.0:
+    dependencies:
+      node-bin-setup: 1.1.4
 
   non-layered-tidy-tree-layout@2.0.2:
     optional: true
@@ -31617,9 +31620,3 @@ snapshots:
       react: 18.3.1
 
   zwitch@2.0.4: {}
-
-  node-bin-setup@1.1.4: {}
-
-  node@24.9.0:
-    dependencies:
-      node-bin-setup: 1.1.4
