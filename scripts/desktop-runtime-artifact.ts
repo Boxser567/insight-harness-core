@@ -142,6 +142,17 @@ function runPnpm(args: string[]): Promise<void> {
 }
 
 /**
+ * Remove deployed Node shims before its preinstall has supplied the executable.
+ * @param output - Deployed Runtime root, before dependency rebuilds.
+ * @returns Completion after lifecycle scripts can fall back to the host Node.
+ */
+export async function removeDesktopRuntimeNodeShims(output: string): Promise<void> {
+  for (const name of ['node', 'node.cmd', 'node.ps1', 'node.exe']) {
+    await rm(join(output, 'node_modules/.bin', name), { force: true })
+  }
+}
+
+/**
  * Approve the same reviewed workspace postinstall under deploy's file URL identity.
  * @param output - Deployed Runtime root.
  * @returns Completion after updating only the reviewed script's approval.
@@ -224,6 +235,7 @@ async function main(): Promise<void> {
     '--child-concurrency=1', '--network-concurrency=1', output,
   ])
   await approveDeployedSubprocessBuild(output)
+  await removeDesktopRuntimeNodeShims(output)
   await runPnpm(['--dir', output, '--config.node-linker=hoisted', 'rebuild'])
   await assertDesktopRuntimeBuilds(output)
   if (target.platform !== 'win32') {

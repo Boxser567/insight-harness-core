@@ -3,5 +3,5 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write runtime/desktop/README.md
 /desktop-runtime:
-  en: 464130d727dbb19d
-  zh: bd13c4bf0249378f
+  en: 7c8aa1d1097c786e
+  zh: 46a1e99211670308

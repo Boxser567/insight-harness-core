@@ -1,7 +1,8 @@
-import { link, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { spawnSync } from 'node:child_process'
+import { link, mkdtemp, mkdir, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { globSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { delimiter, dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { load } from 'js-yaml'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -15,6 +16,7 @@ import {
   createDesktopRuntimeMetadata,
   parseDesktopRuntimeTarget,
   pnpmInvocation,
+  removeDesktopRuntimeNodeShims,
 } from './desktop-runtime-artifact.ts'
 
 const temporaryDirectories: string[] = []
@@ -117,6 +119,34 @@ describe('desktop runtime artifact metadata', () => {
       "export const name = 'dsh-desktop-hmr-fallback'",
     )
   })
+})
+
+it('uses the host Node for lifecycle scripts before the deployed Node is installed', async () => {
+  const output = await mkdtemp(join(tmpdir(), 'desktop-runtime-node-bootstrap-'))
+  temporaryDirectories.push(output)
+  const bins = join(output, 'node_modules/.bin')
+  await mkdir(bins, { recursive: true })
+  await writeFile(join(bins, 'node'), '#!/bin/sh\nexit 42\n', { mode: 0o755 })
+  await writeFile(join(bins, 'node.cmd'), '@exit /b 42\r\n')
+  await writeFile(join(bins, 'node.ps1'), 'exit 42\n')
+  await writeFile(join(bins, 'node-which'), 'unrelated command')
+  const pathKey = Object.keys(process.env).find(key => key.toLowerCase() === 'path') ?? 'PATH'
+  const invokeNode = () => spawnSync(
+    process.platform === 'win32' ? process.env.ComSpec ?? 'cmd.exe' : '/bin/sh',
+    process.platform === 'win32' ? ['/d', '/s', '/c', 'node --version'] : ['-c', 'node --version'],
+    { cwd: output, env: { ...process.env, [pathKey]: [bins, dirname(process.execPath)].join(delimiter) }, encoding: 'utf8' },
+  )
+  expect(invokeNode().status).toBe(42)
+  await writeFile(join(bins, 'node.exe'), 'stale executable')
+
+  await removeDesktopRuntimeNodeShims(output)
+
+  const result = invokeNode()
+  expect(result.status, result.stderr).toBe(0)
+  expect(result.stdout.trim()).toBe(process.version)
+  expect(await readdir(bins)).toEqual(['node-which'])
+  await expect(removeDesktopRuntimeNodeShims(output)).resolves.toBeUndefined()
+  await expect(removeDesktopRuntimeNodeShims(join(output, 'absent'))).resolves.toBeUndefined()
 })
 
 it('rejects a deploy missing required peers while permitting absent optional peers', async () => {
