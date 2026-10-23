@@ -196,6 +196,11 @@ export async function materializeDeployedProjectPackages(output: string, workspa
   }
 }
 
+/**
+ * Replace vendor links with package files; dependencies resolve from the deployed modules.
+ * @param output - Completed legacy deploy directory.
+ * @returns Resolution after deployed vendor links are replaced.
+ */
 export async function materializeVendoredPackages(output: string): Promise<void> {
   const vendorRoot = join(root, 'vendor')
   for (const entry of await readdir(vendorRoot, { withFileTypes: true })) {
@@ -211,7 +216,12 @@ export async function materializeVendoredPackages(output: string): Promise<void>
     }
     if (!destinationStat.isSymbolicLink()) continue
     await rm(destination, { recursive: true, force: true })
-    await cp(source, destination, { recursive: true, dereference: true })
+    await cp(source, destination, {
+      recursive: true,
+      dereference: true,
+      // Workspace dependency links can cycle; deploy already owns the dependency tree.
+      filter: path => path !== join(source, 'node_modules'),
+    })
   }
 }
 
